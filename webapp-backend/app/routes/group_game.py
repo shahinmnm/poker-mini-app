@@ -42,7 +42,7 @@ async def get_user_from_request(request: Request) -> User:
     # Fallback to simple identity from query/header
     user_id = request.query_params.get("user_id")
     if not user_id:
-        # Try to get from header
+        # Try to get from X-Telegram-Init-Data header
         auth_header = request.headers.get("X-Telegram-Init-Data")
         if auth_header:
             # Parse initData to get user_id (simplified)
@@ -55,6 +55,22 @@ async def get_user_from_request(request: Request) -> User:
                 user_id = user_obj.get("id")
             except Exception:
                 pass
+        
+        # Try Authorization: Bearer <initData>
+        if not user_id:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.lower().startswith("bearer "):
+                init_data = auth_header.split(" ", 1)[1].strip()
+                if init_data:
+                    try:
+                        from urllib.parse import parse_qsl
+                        parsed = dict(parse_qsl(init_data))
+                        user_json = parsed.get("user", "{}")
+                        import json
+                        user_obj = json.loads(user_json)
+                        user_id = user_obj.get("id")
+                    except Exception:
+                        pass
     
     if user_id:
         return User(id=int(user_id), username=f"Player{user_id}", telegram_id=int(user_id))

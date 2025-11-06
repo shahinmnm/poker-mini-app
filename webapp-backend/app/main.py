@@ -35,18 +35,32 @@ class Identity(Dict[str, Any]):
     user_id: int
 
 def get_identity(
+    request: Request,
     x_telegram_init_data: Optional[str] = Header(default=None, alias="X-Telegram-Init-Data"),
+    authorization: Optional[str] = Header(default=None),
     user_id: Optional[int] = Query(default=None),
 ) -> Identity:
     """
     Accept identity from Telegram header (no signature verification for dev),
+    or from Authorization Bearer token (initData),
     or from `?user_id=` as a local/dev fallback.
     """
+    # Try X-Telegram-Init-Data header first
     if x_telegram_init_data:
         # In production you'd verify the signature. For now we only need a stable id.
         return Identity(user_id=1)
+    
+    # Try Authorization: Bearer <initData>
+    if authorization and authorization.lower().startswith("bearer "):
+        init_data = authorization.split(" ", 1)[1].strip()
+        if init_data:
+            # In production you'd verify the signature. For now we only need a stable id.
+            return Identity(user_id=1)
+    
+    # Dev fallback
     if user_id is not None:
         return Identity(user_id=int(user_id))
+    
     raise HTTPException(status_code=401, detail="Missing user identity")
 
 # ---- Mock data ----
