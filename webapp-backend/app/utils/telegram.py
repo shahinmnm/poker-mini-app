@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import os
 import secrets
 import time
 from typing import Any, Dict, Optional
@@ -13,6 +12,7 @@ from urllib.parse import parse_qsl
 
 import redis
 
+from app.utils.env import get_env_int, get_env_str
 
 def verify_telegram_init_data(
     init_data: str,
@@ -67,8 +67,8 @@ def get_redis_client() -> redis.Redis:
     global _redis_client
 
     if _redis_client is None:
-        host = os.getenv("REDIS_HOST", "redis")
-        port = int(os.getenv("REDIS_PORT", "6379"))
+        host = get_env_str("REDIS_HOST", "redis")
+        port = get_env_int("REDIS_PORT", 6379)
         _redis_client = redis.Redis(host=host, port=port, decode_responses=True)
 
     return _redis_client

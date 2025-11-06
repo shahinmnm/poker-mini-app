@@ -7,6 +7,7 @@ import redis.asyncio as redis
 from fastapi import HTTPException, Request, Response
 
 from app.models import User
+from app.utils.env import get_env_int, get_env_str
 
 RedisClient = redis.Redis
 
@@ -25,9 +26,9 @@ async def get_redis_client() -> RedisClient:
     global _session_client
     if _session_client is None:
         _session_client = redis.Redis(
-            host=os.getenv("REDIS_HOST", "redis"),
-            port=int(os.getenv("REDIS_PORT", 6379)),
-            db=int(os.getenv("REDIS_DB", 0)),
+            host=get_env_str("REDIS_HOST", "redis"),
+            port=get_env_int("REDIS_PORT", 6379),
+            db=get_env_int("REDIS_DB", 0),
             decode_responses=False,
         )
     return _session_client
