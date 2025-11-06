@@ -234,6 +234,12 @@ class PokerBotController:
         )
         application.add_handler(
             CallbackQueryHandler(
+                self._handle_group_game_join,
+                pattern=r"^group_game_join:",
+            )
+        )
+        application.add_handler(
+            CallbackQueryHandler(
                 self._handle_nav_back,
                 pattern="^nav_back$",
             )
@@ -1270,6 +1276,55 @@ class PokerBotController:
 
         await self._respond_to_query(query)
         await self._model.start(update, context)
+
+    async def _handle_group_game_join(
+        self, update: Update, context: CallbackContext
+    ) -> None:
+        """Handle group game join callback from inline button."""
+
+        query = update.callback_query
+        if query is None:
+            return
+
+        user = query.from_user
+        if user is None:
+            await self._respond_to_query(query, text="Error: Could not identify user")
+            return
+
+        # Extract game_id from callback_data (format: "group_game_join:game_id")
+        callback_data = query.data or ""
+        if ":" not in callback_data:
+            await self._respond_to_query(query, text="Error: Invalid game ID")
+            return
+
+        _, game_id = callback_data.split(":", 1)
+
+        # Call model to handle group game join
+        # This will integrate with the backend API to join the game
+        try:
+            await self._model.join_group_game(
+                update=update,
+                context=context,
+                game_id=game_id,
+                user_id=user.id,
+                user_name=user.first_name or f"User{user.id}",
+            )
+            await self._respond_to_query(
+                query,
+                text=self._translate(
+                    "controller.group_game.joined",
+                    update=update,
+                ) or "✅ You've joined the game!",
+            )
+        except Exception as e:
+            logger.error("Failed to join group game: %s", e, exc_info=True)
+            await self._respond_to_query(
+                query,
+                text=self._translate(
+                    "controller.group_game.join_failed",
+                    update=update,
+                ) or "❌ Failed to join game. Please try again.",
+            )
 
     async def _handle_private(
         self,
