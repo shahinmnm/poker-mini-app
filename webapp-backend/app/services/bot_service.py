@@ -143,7 +143,7 @@ class BotService:
 
             player_count = len(players)
             player_list = "\n".join(
-                [f"  • {p.get('name', f'Player {p.get(\"id\", \"?\")}')}" for p in players]
+                [f"  • {p.get('name', f\"Player {p.get('id', '?')}\")}" for p in players]
             ) if players else "  (No players yet)"
 
             status_text = (
