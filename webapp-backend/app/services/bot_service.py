@@ -7,8 +7,8 @@ import logging
 import os
 from typing import Dict, List, Optional, Any
 
-from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.error import TelegramError
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup  # type: ignore
+from telegram.error import TelegramError  # type: ignore
 
 logger = logging.getLogger(__name__)
 
