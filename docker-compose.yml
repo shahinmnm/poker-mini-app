@@ -34,8 +34,8 @@ services:
     expose:
       - "8000"
     environment:
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - WEBAPP_SECRET=${WEBAPP_SECRET}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - POKERBOT_TOKEN=${TELEGRAM_BOT_TOKEN}
