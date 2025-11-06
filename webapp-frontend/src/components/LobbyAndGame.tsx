@@ -35,7 +35,8 @@ export function LobbyPanel(props: LobbyProps) {
     try {
       setLoading(true);
       const data = await apiTables(initData);
-      setTables(data);
+      // Ensure data is always an array
+      setTables(Array.isArray(data) ? data : []);
       setError(null);
     } catch (e: any) {
       setError(e?.code === 401 ? "Sign in required" : (e?.message || "Failed to fetch tables"));
@@ -63,6 +64,10 @@ export function LobbyPanel(props: LobbyProps) {
   }
 
   const sorted = useMemo(() => {
+    // Ensure tables is an array before spreading
+    if (!Array.isArray(tables)) {
+      return [];
+    }
     return [...tables].sort((a, b) => {
       // running first, then waiting
       if (a.status !== b.status)
@@ -79,7 +84,7 @@ export function LobbyPanel(props: LobbyProps) {
       <div className="h">
         <TrophyIcon width={18} height={18} />
         <span>Lobby</span>
-        <span className="sub">{tables.length} tables</span>
+        <span className="sub">{Array.isArray(tables) ? tables.length : 0} tables</span>
       </div>
 
       <div className="hr" />
@@ -131,7 +136,10 @@ export function LobbyPanel(props: LobbyProps) {
 
       {loading && <div className="pill">Loading tables…</div>}
       {error && <div className="pill" style={{ color: "var(--error)" }}>{error}</div>}
-      {!loading && !error && (
+      {!loading && !error && (!Array.isArray(sorted) || sorted.length === 0) && (
+        <div className="pill">No tables available</div>
+      )}
+      {!loading && !error && Array.isArray(sorted) && sorted.length > 0 && (
         <div className="list" role="list">
           {sorted.map((t) => (
             <div key={t.id} className="item" role="listitem" aria-label={`${t.name} ${t.stakes}`}>

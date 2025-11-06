@@ -60,7 +60,8 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
     
     try {
       const chatList = await listUserChats(initData);
-      setChats(chatList);
+      // Ensure chatList is always an array
+      setChats(Array.isArray(chatList) ? chatList : []);
       
       // If no chats available, show manual input option
       if (chatList.length === 0) {
@@ -133,10 +134,10 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
                                       '✅ Active'}
           </p>
           <p>
-            <strong>Players:</strong> {gameInfo.players.length}/{gameInfo.min_players}+
+            <strong>Players:</strong> {Array.isArray(gameInfo.players) ? gameInfo.players.length : 0}/{gameInfo.min_players}+
           </p>
           <div className="players-list">
-            {gameInfo.players.map((player) => (
+            {Array.isArray(gameInfo.players) && gameInfo.players.map((player) => (
               <div key={player.id} className="player-item">
                 • {player.name}
               </div>
@@ -171,7 +172,7 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
 
       {error && <div className="error-message">{error}</div>}
 
-      {chats.length > 0 ? (
+      {Array.isArray(chats) && chats.length > 0 ? (
         <div className="chat-selector">
           <label htmlFor="chat-select">Select a group:</label>
           <select
