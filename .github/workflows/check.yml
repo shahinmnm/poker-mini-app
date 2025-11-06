@@ -1,0 +1,40 @@
+name: check-pokerbot
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7.0.2
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
+        env:
+          POKERBOT_REDIS_HOST: "127.0.0.1"
+          POKERBOT_REDIS_PORT: "6379"
+          POKERBOT_REDIS_PASS: ""
+          POKERBOT_REDIS_DB: "0"

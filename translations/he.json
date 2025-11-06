@@ -1,0 +1,551 @@
+{
+  "game": {
+    "card": {
+      "rank": {
+        "10": "עשר",
+        "2": "שתיים",
+        "3": "שלוש",
+        "4": "ארבע",
+        "5": "חמש",
+        "6": "שש",
+        "7": "שבע",
+        "8": "שמונה",
+        "9": "תשע",
+        "A": "אס",
+        "J": "נסיך",
+        "K": "מלך",
+        "Q": "מלכה"
+      },
+      "suit": {
+        "clubs": "תלתן",
+        "diamonds": "יהלום",
+        "hearts": "לב",
+        "spades": "עלה"
+      }
+    },
+    "hand": {
+      "flush": "פלאש",
+      "four_of_kind": "ארבעה מאותו סוג",
+      "full_house": "פול האוס",
+      "high_card": "קלף גבוה",
+      "pair": "זוג",
+      "royal_flush": "רויאל פלאש",
+      "straight": "סטרייט",
+      "straight_flush": "סטרייט פלאש",
+      "three_of_kind": "שלישייה",
+      "two_pair": "שני זוגות"
+    },
+    "round": {
+      "flop": "🃏 פלופ - שלוש קלפים פתוחים",
+      "pre_flop": "🎴 פרה-פלופ - הימורי החובה",
+      "river": "🌊 ריבר - הקלף החמישי",
+      "showdown": "🏆 שאודאון - קביעת המנצח",
+      "turn": "🎯 טרן - הקלף הרביעי"
+    },
+    "state": {
+      "finished": "חשיפת קלפים",
+      "flop": "פלופ",
+      "initial": "ממתינים לשחקנים",
+      "pre_flop": "פרה-פלופ",
+      "river": "ריבר",
+      "turn": "טרן"
+    }
+  },
+  "help": {
+    "commands": {
+      "list": "/start - הפעלת הבוט\n/menu - תפריט ראשי\n/newgame - יצירת משחק\n/join - הצטרפות\n/leave - עזיבה\n/wallet - בדיקת יתרה\n/help - עזרה\n/language - שינוי שפה",
+      "title": "🤖 פקודות הבוט"
+    },
+    "hand_rankings": {
+      "list": "1. רויאל פלאש\n2. סטרייט פלאש\n3. ארבעה מאותו סוג\n4. פול האוס\n5. פלאש\n6. סטרייט\n7. שלישייה\n8. שני זוגות\n9. זוג\n10. קלף גבוה",
+      "title": "🏆 דירוג ידיים (מהחזק לחלש)"
+    },
+    "rules": {
+      "actions": "**מהלכים:**\n• צ'ק: העברת התור\n• השוואה: התאמת ההימור הנוכחי\n• העלאה: הגדלת ההימור\n• קיפול: ויתור על היד\n• הכול: הימור על כל הז'יטונים",
+      "betting_rounds": "**שלבי ההימור:**\n1️⃣ פרה-פלופ (חלוקת שני קלפים)\n2️⃣ פלופ (שלושה קלפים משותפים)\n3️⃣ טרן (קלף משותף אחד)\n4️⃣ ריבר (קלף משותף אחד)",
+      "objective": "**מטרה:** להרכיב את היד הטובה ביותר מחמישה קלפים עם שני הקלפים האישיים וחמישה קלפים משותפים.",
+      "title": "📖 כללי טקסס הולדם"
+    },
+    "full_text": "🎴 בוט פוקר טקסס הולדם\n\n📖 איך לשחק:\n• השתמש ב-/start לפתיחת התפריט הראשי\n• השתמש ב-/private ליצירה או הצטרפות למשחקים פרטיים\n• השתמש ב-/help לראות הודעה זו\n• השתמש ב-/language לשינוי השפה\n\n🎮 חוקי המשחק:\n• 2-10 שחקנים במשחק\n• חוקי טקסס הולדם סטנדרטיים\n• סיבובי הימורים: Pre-flop, Flop, Turn, River\n\n💰 פעולות:\n• Fold - ויתור על היד\n• Check - מעבר ללא הימור\n• Call - השוואה להימור הנוכחי\n• Raise - העלאת ההימור\n• All-in - הימור על הכל\n\n🏆 דירוג ידיים (מהגבוה לנמוך):\n1. רויאל פלאש\n2. סטרייט פלאש\n3. ארבעה מאותו סוג\n4. פול האוס\n5. פלאש\n6. סטרייט\n7. שלישייה\n8. שני זוגות\n9. זוג\n10. קלף גבוה\n\nבהצלחה! 🍀",
+    "model": {
+      "fallback": "🇮🇱 ℹ️ עזרת הפוקר אינה זמינה זמנית. נסה שוב מאוחר יותר."
+    }
+  },
+  "meta": {
+    "font": "Rubik",
+    "language": "he",
+    "rtl": true,
+    "version": "1.0.0"
+  },
+  "msg": {
+    "current_bet": "🎯 הימור נוכחי: ${amount}",
+    "dealing_cards": "🃏 מחלקים קלפים...",
+    "error": {
+      "generic": "❌ אירעה שגיאה. נסו שוב.",
+      "network": "🌐 שגיאת רשת. בדקו את החיבור.",
+      "timeout": "⏱️ הזמן לביצוע מהלך הסתיים",
+      "insufficient_funds_detail": "🇮🇱 ❌ אין לך מספיק ז'יטונים. יש לך {balance} אבל נדרשים {required}.",
+      "not_enough_players_ready": "🇮🇱 ⚠️ ממתינים לעוד שחקנים מוכנים לפני תחילת המשחק.",
+      "players_insufficient_funds": "🇮🇱 ⚠️ השחקנים האלה צריכים עוד ז'יטונים: {players}",
+      "wallet_not_enough": "🇮🇱 ❌ אין לך מספיק ז'יטונים לפעולה הזאת.",
+      "rate_limited": "[he] ⚠️ Too many requests. Please slow down and try again later."
+    },
+    "game_started": "🎮 המשחק התחיל! בהצלחה!",
+    "new_round": "🔄 מתחיל סיבוב חדש...",
+    "player_all_in": "🔥 {player} הולך על הכול עם ${amount}!",
+    "player_called": "💵 {player} השווה ${amount}",
+    "player_checked": "✅ {player} עבר",
+    "player_folded": "❌ {player} קיפל",
+    "player_joined": "➕ {player} הצטרף למשחק",
+    "player_left": "➖ {player} עזב את השולחן",
+    "player_raised": "⬆️ {player} העלה ל-${amount}",
+    "player_ready": "✋ {player} מוכן",
+    "pot": "💰 קופה: ${amount}",
+    "private": {
+      "invite": {
+        "body": "🎰 הזמנה למשחק פרטי\n\n{inviter} מזמין אותך להצטרף!\n\n🎲 הימורים: {stake}\n🔑 קוד: {code}\n\nמצטרף?",
+        "detailed_body": "🎴 הזמנה למשחק\n\n{host} מזמין אותך לשחק!\n\n🎯 קוד המשחק: {code}\n\n💰 הימורים: {stake_name}\n• בלאיינד קטן: ${small_blind}\n• בלאיינד גדול: ${big_blind}\n💵 מינימום קנייה: ${min_buyin}\n\nרוצה להצטרף?",
+        "sent": "[he] ✅ Invitation sent to {username}!",
+        "send_failed": "[he] ❌ Couldn't send invitation to {username}.\nThey may have blocked the bot.",
+        "accepted": "[he] ✅ Joined Game!\n\nGame Code: {code}\nStakes: {stake}\n\nUse /leave to exit the lobby.",
+        "accepted_host": "[he] ✅ {player} accepted your invitation!",
+        "declined": "[he] ❌ Invitation Declined\n\nYou declined the game invitation.",
+        "declined_host": "[he] ❌ {player} declined your invitation.",
+        "summary": {
+          "empty": "[he] 📭 You have no pending invitations.",
+          "header": "[he] 📨 Pending invitations:",
+          "entry_with_details": "[he] • {code} — {details}",
+          "entry_simple": "[he] • {code}",
+          "footer": "[he] Use /accept CODE to join or /decline CODE to refuse."
+        },
+        "already_accepted": "[he] ✅ You already accepted this invitation!",
+        "declined_with_hint": "[he] ❌ Invitation declined.\n\nYou can still join later with /join {code}"
+      },
+      "lobby": {
+        "body": "{title}\n\n🎯 מארח: {host}\n🎲 הימורים: {stake}\n🔑 קוד: {code}\n\n{player_status}\n\n{players}\n\n{readiness}",
+        "min_indicator": "(מינ' {min_players})",
+        "player_status": "{status_icon} שחקנים: {current}/{max} {min_indicator}",
+        "ready": "✅ מוכנים להתחיל!",
+        "title": "🔒 לובי משחק פרטי",
+        "waiting": "⏳ ממתינים לעוד שחקנים (מינימום {min_players})...",
+        "leave_confirmation": "[he] 🚪 You left the private game.\nYour seat is now available for others.",
+        "player_left": "[he] 👋 {player} left the game.",
+        "new_host": "[he] 👑 {player} is now the host!",
+        "current_players": "[he] 👥 Current players ({current}/{max}):",
+        "player_entry": "[he] {index}. {player}{host_marker}",
+        "host_marker": "[he]  👑 (Host)"
+      },
+      "stake_menu": {
+        "body": "🇮🇱 {title}\\n\\n{subtitle}\\n\\n{options}\\n\\n{footer}",
+        "footer": "ℹ️ מינימום הקנייה תלוי ברמת ההימורים",
+        "option_high": "💎 גבוה ($5K/$10K)",
+        "option_low": "💰 נמוך ($250/$500)",
+        "option_medium": "🎯 בינוני ($1K/$2K)",
+        "option_micro": "🇮🇱 💵 מיקרו ($50/$100)",
+        "option_premium": "🇮🇱 🏆 פרימיום ($10K/$20K)",
+        "subtitle": "בחר את רמת ההימורים המועדפת:",
+        "title": "🎲 בחירת הימורים",
+        "cancelled": "🇮🇱 ❌ יצירת שולחן פרטי בוטלה."
+      },
+      "error": {
+        "already_active": "🇮🇱 ⚠️ כבר יש לך משחק פרטי פעיל. סיים או סגור אותו לפני יצירת חדש.",
+        "invalid_stake": "🇮🇱 ⚠️ רמת הימור '{level}' אינה מוכרת. אנא בחר אפשרות אחרת.",
+        "no_active_game": "[he] ❌ You don't have an active private game.\n\nCreate one with /private",
+        "missing_player": "[he] ❌ Please specify a player:\n\n/invite @username",
+        "user_not_found": "[he] ❌ User {username} not found.\n\nPlayers must have used the bot before being invited.",
+        "game_not_found": "[he] ❌ Game not found.",
+        "game_misconfigured": "[he] ❌ Game stakes are misconfigured.",
+        "game_expired": "[he] ❌ Game {code} not found or expired.",
+        "host_only_start": "[he] ❌ Only the host can start the game!",
+        "already_started": "[he] ❌ Game has already started or finished!",
+        "min_players": "[he] ❌ Need at least {min_players} players to start!\n\nCurrent: {current} player(s)",
+        "too_many_players": "[he] ❌ Too many players to start!\n\nMaximum: {max_players} players\nCurrent: {current} players\n\nSome players must /leave before starting.",
+        "stake_missing": "[he] ❌ Stake configuration missing for this game!",
+        "insufficient_funds_header": "[he] ❌ Cannot start game - insufficient funds:\n",
+        "insufficient_funds_line": "[he] • {player}: ${balance} (need ${required})",
+        "insufficient_funds_footer": "[he] \nAll players need at least ${required} to play.",
+        "lobby_changed": "[he] ⚠️ Lobby state changed during game start. Please try /start again.",
+        "invite_invalid": "[he] ❌ This invitation has expired or is invalid.",
+        "invite_already_responded": "[he] ❌ You already {status} this invitation.",
+        "game_missing": "[he] ❌ Game no longer exists.",
+        "not_in_game": "[he] ❌ You're not in any private game.",
+        "session_missing": "[he] ❌ Game session not found.",
+        "cannot_leave_started": "[he] ❌ Cannot leave started game. Use buttons to fold.",
+        "status_unavailable": "[he] ⚠️ This private game is no longer available.",
+        "status_failed": "[he] ⚠️ Unable to load private game details.",
+        "not_invited": "[he] ❌ You are not invited to this game."
+      },
+      "created": "🇮🇱 🎉 שולחן פרטי נוצר!\\nמארח: {host}\\nהימורים: {stake}\\nבאי-אין: ${min_buyin} - ${max_buyin}\\nקוד: {code}\\nמקסימום שחקנים: {max_players}\\n\\nשתף את הקוד עם חברים להזמנה."
+    },
+    "showdown": "🎭 חשיפת קלפים!",
+    "tie": "🤝 תיקו! הקופה מתחלקת בין: {players}",
+    "welcome": "👋 ברוכים הבאים לטקסס הולדם!",
+    "winner": "🏆 {player} מנצח ב-${amount}!",
+    "your_turn": "🎯 זה התור שלך, {player}!",
+    "bonus": {
+      "already_claimed": "🇮🇱 🎁 כבר קיבלת את הבונוס של היום. יתרה נוכחית: ${amount}",
+      "already_claimed_plain": "🇮🇱 הבונוס היומי כבר נלקח. יתרה: ${amount}",
+      "result": "🇮🇱 {icon} בונוס נפתח! קיבלת ${bonus}. יתרה חדשה: ${total}"
+    },
+    "game_in_progress": "🇮🇱 🎮 משחק כבר מתנהל.",
+    "lobby": {
+      "already_ready": "🇮🇱 ✅ כבר סומנת כמוכן.",
+      "game_in_progress": "🇮🇱 🎮 משחק כבר רץ.",
+      "insufficient_funds": "🇮🇱 💰 אין לך מספיק ז'יטונים לשולחן הזה.",
+      "room_full": "🇮🇱 🚫 הלובי מלא (מקסימום {max_players} שחקנים)."
+    },
+    "player_action": {
+      "generic": "[he] {player} {action} ${amount}"
+    },
+    "model": {
+      "error": {
+        "chat_context_missing": "[he] ❌ Cannot determine chat context",
+        "no_active_game_chat": "[he] ❌ No active game in this chat",
+        "action_expired": "[he] ♻️ Action expired. Please use the latest buttons.",
+        "game_inactive": "[he] 🛑 Game is not accepting actions right now.",
+        "already_folded": "[he] ❌ You already folded!",
+        "cannot_act_now": "[he] ❌ You cannot act right now",
+        "call_or_raise": "[he] ❌ You must call or raise",
+        "invalid_raise_amount": "[he] ❌ Invalid raise amount",
+        "unknown_action": "[he] ❌ Unknown action"
+      }
+    }
+  },
+  "popup": {
+    "fold_confirmation": {
+      "message": "האם לקפל את היד?",
+      "pot": "קופה: ${amount}",
+      "title": "⚠️ אישור קיפול",
+      "your_cards": "הקלפים שלכם: {cards}",
+      "body": "🇮🇱 ⚠️ לאשר קיפול?\\nקופה: {pot}\\nהשקעת: {investment} ({percentage}% מהקופה)",
+      "confirm_button": "🇮🇱 ✅ לקפל",
+      "cancel_button": "🇮🇱 ↩️ להמשיך לשחק"
+    },
+    "toast": {
+      "error": "❌ שגיאה: {message}",
+      "info": "ℹ️ מידע: {message}",
+      "success": "✅ הצלחה: {message}",
+      "fold_prompt": "🇮🇱 גע בכפתור כדי לאשר או לבטל את הקיפול."
+    }
+  },
+  "ui": {
+    "action": {
+      "all_in": "הכול",
+      "call": "השוואה",
+      "check": "צ'ק",
+      "fold": "קיפול",
+      "raise": "העלאה"
+    },
+    "button": {
+      "all_in": "🔥 הולכים על הכול",
+      "call": "💵 השוואה ${amount}",
+      "cancel_fold": "❌ ביטול",
+      "check": "✅ צ'ק",
+      "confirm_fold": "✅ כן, לקפל",
+      "fold": "❌ קיפול",
+      "join": "➕ הצטרפות",
+      "leave": "➖ עזיבה",
+      "raise": "⬆️ העלאה",
+      "ready": "✋ מוכן",
+      "sit": "🪑 לשבת",
+      "stand": "🚶 לקום",
+      "start": "🎮 התחלת משחק"
+    },
+    "controller": {
+      "commands": {
+        "start": "🎮 הפעל את הבוט והצג תפריט ראשי",
+        "ready": "✅ סמן את עצמך כמוכן לשחק",
+        "private": "🔒 צור או נהל משחקי פוקר פרטיים",
+        "join": "הצטרפות למשחק פרטי קיים",
+        "invite": "הזמנת שחקן למשחק הפרטי שלך",
+        "accept": "אישור הזמנה פרטית ממתינה",
+        "decline": "דחיית הזמנה פרטית ממתינה",
+        "leave": "עזיבת המשחק או הלובי הפרטי הנוכחי",
+        "money": "בדיקת יתרת הז'יטונים שלך",
+        "cards": "הצגת היד הנוכחית שלך",
+        "ban": "🚫 אסור שחקן מהמשחק הנוכחי (מנהל בלבד)",
+        "stop": "🛑 עצור את המשחק הנוכחי (מנהל בלבד)",
+        "help": "❓ הצג עזרה וחוקי משחק",
+        "language": "🌍 שנה שפת בוט",
+        "stats": "📊 הצג את סטטיסטיקות הפוקר שלך",
+        "leaderboard": "🏆 הצג לוח מובילים גלובלי",
+        "wallet": "💰 בדוק יתרת ארנק",
+        "daily": "🎁 קבל צ’יפים יומיים",
+        "settings": "⚙️ נהל הגדרות בוט",
+        "about": "ℹ️ אודות בוט זה"
+      },
+      "toast": {
+        "action_recorded": "✅ הפעולה נשמרה",
+        "fold_cancelled": "↩️ הקיפול בוטל",
+        "joined_game": "✅ הצטרפתם למשחק",
+        "left_game": "👋 עזבתם את המשחק"
+      },
+      "action": {
+        "all_in": "🇮🇱 🔥 אול-אין ננעל!",
+        "call": "🇮🇱 💵 קרא {amount}",
+        "call_check": "🇮🇱 ✅ קאל — לא נדרשים ז'יטונים",
+        "check": "🇮🇱 ✅ צ'ק",
+        "fold": "🇮🇱 ❌ קיפל",
+        "raise": "🇮🇱 ⬆️ העלאה בתור",
+        "raise_to": "🇮🇱 ⬆️ הועלה ל-{amount}",
+        "submitted": "🇮🇱 ✅ הפעולה נשלחה",
+        "bet": "🇮🇱 💰 הימר {amount}",
+        "confirmed": "🇮🇱 ✅ הפעולה אושרה",
+        "invalid_format": "🇮🇱 ❌ פורמט פעולה לא חוקי",
+        "invalid_raise_format": "🇮🇱 ❌ פורמט העלאה לא חוקי",
+        "invalid_raise_amount": "🇮🇱 ❌ סכום העלאה לא חוקי",
+        "invalid_version": "🇮🇱 ❌ גרסת פעולה לא חוקית",
+        "missing_context": "🇮🇱 ❌ לא ניתן היה לזהות את הצ'אט",
+        "unknown": "🇮🇱 ❌ סוג פעולה לא מוכר",
+        "failed_state": "🇮🇱 ❌ הפעולה נכשלה. בדוק את מצב המשחק.",
+        "failed_generic": "🇮🇱 ❌ הפעולה נכשלה – לא תורך או שהפעולה לא חוקית",
+        "handler_unavailable": "🇮🇱 ❌ מנגנון הפעולות אינו זמין"
+      },
+      "fold": {
+        "cancelled": "🇮🇱 ↩️ הקיפול בוטל",
+        "expired": "🇮🇱 ⌛ אישור הקיפול פג",
+        "failure": "🇮🇱 ⚠️ לא ניתן היה לעבד את הקיפול",
+        "success": "🇮🇱 ✅ הקיפול אושר"
+      },
+      "invite": {
+        "accept_help": "🇮🇱 שלח ‎/accept CODE כדי לקבל את ההזמנה האחרונה שלך.",
+        "decline_help": "🇮🇱 שלח ‎/decline CODE כדי לדחות את ההזמנה האחרונה שלך."
+      },
+      "lobby": {
+        "left": "🇮🇱 👋 עזבת את הלובי."
+      },
+      "raise": {
+        "error_choose_amount": "🇮🇱 בחר תחילה סכום העלאה.",
+        "error_context": "🇮🇱 ⚠️ בקרת ההעלאה הזו כבר לא פעילה.",
+        "error_expired": "🇮🇱 ⌛ בחירת ההעלאה פגה.",
+        "error_invalid": "🇮🇱 ❌ אפשרות ההעלאה הזו אינה זמינה.",
+        "error_no_game": "🇮🇱 ❌ לא נמצא משחק פעיל.",
+        "error_selection": "🇮🇱 ⚠️ לא ניתן היה לזהות את בחירת ההעלאה שלך.",
+        "error_unavailable": "🇮🇱 ⚠️ בקרות ההעלאה אינן זמינות כעת.",
+        "error_unknown": "🇮🇱 ⚠️ אירעה שגיאה בעת עיבוד ההעלאה.",
+        "error_user": "🇮🇱 ⚠️ רק השחקן שבתורו יכול להשתמש בבקרה הזו.",
+        "picker_unavailable": "🇮🇱 ❌ בורר ההעלאה אינו זמין",
+        "pick_amount": "🇮🇱 📈 בחר סכום להעלאה"
+      },
+      "group_admin": {
+        "ban": "/ban <user> - 🇮🇱 הסר שחקן מפריע",
+        "stop": "/stop - 🇮🇱 סיים את המשחק הנוכחי",
+        "language": "/language - 🇮🇱 שנה את שפת השולחן"
+      }
+    },
+    "error": {
+      "navigation_failed": "⚠️ הניווט נכשל. נסו שוב.",
+      "invalid_state": "⚠️ זוהתה מצב תפריט שגוי. חוזרים לתפריט הראשי.",
+      "state_recovery": "♻️ מצב התפריט שוחזר. המשיכו."
+    },
+    "lobby": {
+      "active_games": "📊 משחקים פעילים: {count}",
+      "game_starting": "🎮 המשחק מתחיל בעוד {seconds} ש'...",
+      "host_entry": "👑 {player} (מארח)",
+      "min_players": "נדרש לפחות {min} שחקנים כדי להתחיל",
+      "new_game": "🆕 משחק חדש",
+      "no_active_games": "אין משחקים פעילים. פתחו אחד!",
+      "player_entry": "🇮🇱 • {player}",
+      "players": "👥 שחקנים ({count}/{max})",
+      "players_ready": "{ready}/{total} שחקנים מוכנים",
+      "ready_to_start": "✅ מוכנים להתחיל!",
+      "title": "🎰 לובי הפוקר",
+      "waiting": "⏳ ממתינים שהמארח יתחיל...",
+      "waiting_players": "⏳ ממתינים לשחקנים..."
+    },
+    "group_lobby": {
+      "title": "🎰 לובי משחק הפוקר 🎰",
+      "players_header": "👥 שחקנים שיושבים",
+      "player_entry": "✅ {name}",
+      "no_players": "⛔ עדיין אין שחקנים",
+      "total_players": "📊 סך הכול: {count} שחקנים",
+      "status": {
+        "ready": "✅ מוכן להתחיל! (מינימום {min_players})",
+        "waiting": "⏳ ממתינים לעוד שחקנים (מינימום {min_players})"
+      },
+      "footer": {
+        "manage": "⬇️ השתמשו בכפתורים למטה לניהול ⬇️"
+      },
+      "buttons": {
+        "sit": "🪑 שב לשולחן",
+        "leave": "🚶 עזוב את השולחן",
+        "start": "🎮 התחל משחק"
+      }
+    },
+    "nav": {
+      "back": "חזרה",
+      "home": "תפריט ראשי"
+    },
+    "menu": {
+      "common": {
+        "help": "❓ עזרה",
+        "settings": "⚙️ הגדרות"
+      },
+      "location": {
+        "main": "תפריט ראשי",
+        "private_setup": "יצירת משחק פרטי",
+        "private_view": "משחק פרטי",
+        "stake_select": "בחירת הימורים",
+        "player_mgmt": "ניהול שחקנים",
+        "group_setup": "הגדרת משחק קבוצתי",
+        "group_view": "משחק קבוצתי",
+        "settings": "הגדרות",
+        "lang_select": "בחירת שפה"
+      },
+      "group": {
+        "admin_panel": "⚙️ לוח ניהול קבוצה",
+        "join_game": "🎴 הצטרפות למשחק",
+        "leave_game": "🚪 יציאה מהמשחק",
+        "language": "🌐 שפת הקבוצה",
+        "main_title": "🎲 פוקר בוט - תפריט קבוצה",
+        "new_game": "🆕 משחק חדש",
+        "rules": "📖 חוקים",
+        "start_game": "🎲 התחלת משחק חדש",
+        "title": "🎮 שליטה במשחק",
+        "view_game": "👀 צפייה במצב המשחק"
+      },
+      "main": "📋 תפריט ראשי",
+      "private": {
+        "create_game": "🎰 יצירת משחק פרטי",
+        "help": "❓ עזרה",
+        "language": "🌐 שפה",
+        "main_title": "🎴 פוקר בוט - מרכז אישי",
+        "sections": {
+          "gameplay": "🎮 ניהול המשחקים הפרטיים שלך",
+          "invitations": "📨 צפייה בהזמנות שלך",
+          "support": "🛠 הגדרות ותמיכה"
+        },
+        "manage_game": "⚙️ ניהול המשחק",
+        "statistics": "📊 סטטיסטיקות",
+        "title": "⚙️ הגדרות ופרופיל",
+        "view_game": "👀 צפייה במשחק הנוכחי",
+        "view_invites": "📨 צפייה בהזמנות",
+        "wallet": "💰 ארנק"
+      },
+      "settings": {
+        "title": "⚙️ העדפות שפה",
+        "descriptions": {
+          "private": "קבעו את השפה לצ'אטים פרטיים.",
+          "group": "קבעו את שפת ברירת המחדל של הקבוצה."
+        },
+        "buttons": {
+          "private_language": "🙋‍♂️ שפה פרטית",
+          "group_language": "👥 שפת הקבוצה"
+        }
+      }
+    },
+    "language": {
+      "back": "⬅️ חזרה"
+    },
+    "private": {
+      "invite": {
+        "accept": "✅ קבל הזמנה",
+        "decline": "❌ דחה"
+      },
+      "lobby": {
+        "invite": "📨 הזמן שחקן",
+        "leave": "🚪 צא מהלובי",
+        "start": "🎰 התחל משחק"
+      },
+      "stake_menu": {
+        "button": {
+          "cancel": "❌ ביטול",
+          "high": "💎 גבוה",
+          "language": "🌐 החלף שפה",
+          "low": "💰 נמוך",
+          "medium": "🎯 בינוני",
+          "micro": "🇮🇱 💵 מיקרו",
+          "premium": "🇮🇱 🏆 פרימיום"
+        }
+      }
+    },
+    "settings": {
+      "title": "⚙️ העדפות שפה",
+      "descriptions": {
+        "private": "בחרו כיצד הבוט מדבר אליכם בצ'אטים פרטיים.",
+        "group": "קבעו את שפת ברירת המחדל עבור כל חברי הקבוצה."
+      },
+      "buttons": {
+        "private_language": "🙋‍♂️ שפה פרטית",
+        "group_language": "👥 שפת הקבוצה"
+      },
+      "language_changed": "✅ השפה הוחלפה לעברית",
+      "group_language_changed": "✅ שפת הקבוצה הוחלפה לעברית",
+      "language_select": "🌐 בחרו שפה:",
+      "choose_private_language": "🌍 בחרו את שפת הצ'אט הפרטי",
+      "choose_group_language": "🌍 בחרו את שפת הקבוצה",
+      "wallet_balance": "💰 יתרה: ${amount}",
+      "wallet_empty": "הארנק שלכם ריק. פנו למנהל להוספת ז'יטונים.",
+      "choose_language": "🌍 בחר את השפה שלך"
+    },
+    "model": {
+      "error": {
+        "already_in_game": "⚠️ אתם כבר במשחק",
+        "already_in_game_other": "⚠️ {player} כבר נמצא במשחק אחר.",
+        "game_full": "🚫 המשחק מלא (עד {max} שחקנים).",
+        "insufficient_chips": "❌ אין מספיק ז'יטונים\nנדרש: {required}\nזמין: {balance}",
+        "invalid_action": "❌ פעולה לא חוקית",
+        "min_raise": "⚠️ ההעלאה המינימלית היא ${amount}",
+        "not_your_turn": "⏸️ זה לא התור שלך",
+        "not_your_turn_with_player": "זה התור של {player}."
+      },
+      "join": {
+        "already_in_game": "🇮🇱 ⚠️ אתה כבר יושב במשחק הפרטי הזה.",
+        "code_invalid": "🇮🇱 קודי הזמנה חייבים להיות בני 6 אותיות או מספרים. '{code}' אינו תקין.",
+        "code_required": "🇮🇱 אנא ספק את קוד ההזמנה בן 6 התווים (למשל ‎/join ABC123).",
+        "game_full": "🇮🇱 🚫 המשחק הפרטי הזה כבר מלא.",
+        "game_not_found": "🇮🇱 ❌ לא נמצא משחק פרטי עבור הקוד {code}.",
+        "game_started": "🇮🇱 ⚠️ המשחק הפרטי הזה כבר התחיל.",
+        "not_accepting": "🇮🇱 ⚠️ המשחק הפרטי הזה אינו מקבל שחקנים חדשים כרגע.",
+        "success": "🇮🇱 ✅ נכנסת! המתן שהמארח יתחיל את המשחק.",
+        "usage": "🇮🇱 השתמש ב-‎/join CODE כדי להצטרף ללובי פרטי."
+      }
+    },
+    "viewer": {
+      "fold_confirmation": {
+        "message": "האם לקפל את היד?\nהקלפים שלכם: {cards}",
+        "pot_amount": "קופה נוכחית: ${amount}",
+        "title": "⚠️ אישור קיפול"
+      },
+      "hand": {
+        "header": "🇮🇱 🃏 היד שלך",
+        "empty": "🇮🇱 עדיין אין לך קלפים. המתן רגע!",
+        "pot": "🇮🇱 💰 קופה: {amount}"
+      },
+      "table": {
+        "header": "🇮🇱 🪑 שולחן",
+        "waiting": "🇮🇱 ממתינים לשחקנים נוספים..."
+      }
+    },
+    "navigation": {
+      "already_main": "ℹ️ אתה כבר בתפריט הראשי."
+    }
+  },
+  "viewer": {
+    "board": {
+      "label": "שולחן",
+      "cards_locked": "הקלפים נעולים"
+    },
+    "pot": {
+      "label": "קופה",
+      "bet_label": "הימור"
+    },
+    "game": {
+      "pot": "קופה",
+      "bet": "הימור",
+      "turn": "תורך",
+      "waiting_players": "ממתינים לשחקנים…",
+      "active_players": "{active}/{total} פעילים",
+      "recent_actions": "פעולות אחרונות",
+      "selected_raise": "העלאה שנבחרה",
+      "player_state": {
+        "fold": "פולד",
+        "all_in": "אול-אין",
+        "waiting": "ממתין"
+      }
+    },
+    "lobby": {
+      "no_players": "אין שחקנים שיושבים עדיין"
+    }
+  }
+}
