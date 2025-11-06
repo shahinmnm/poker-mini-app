@@ -62,6 +62,7 @@ services:
       dockerfile: Dockerfile
       args:
         - WEBAPP_PUBLIC_ORIGIN=${WEBAPP_PUBLIC_ORIGIN:-https://poker.shahin8n.sbs}
+        - WEBAPP_API_URL=${WEBAPP_API_URL:-/api}
     restart: always
     ports:
       - "${WEBAPP_FRONTEND_PORT:-8080}:80"
