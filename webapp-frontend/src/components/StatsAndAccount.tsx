@@ -13,7 +13,7 @@ import {
   PercentIcon,
   UserIcon,
 } from "./icons";
-import { apiUserSettings, apiUserStats } from "../lib/api";
+import { apiUserSettings, apiUserStats } from "../services/api";
 
 type Stats = {
   user_id: number;

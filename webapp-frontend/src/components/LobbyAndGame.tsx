@@ -1,4 +1,3 @@
-// webapp-frontend/src/components/LobbyAndGame.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { apiJoinTable, apiTables, TableDto } from "../services/api";
 import {

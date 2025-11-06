@@ -209,3 +209,103 @@ export const apiJoinTable = async (tableId: string, token?: string): Promise<{ s
     token
   );
 };
+
+// User stats and settings endpoints
+interface BackendStats {
+  hands_played: number;
+  hands_won: number;
+  total_profit: number;
+  biggest_pot_won: number;
+  avg_stake: number;
+  current_streak: number;
+  hand_distribution: Record<string, number>;
+}
+
+interface BackendSettings {
+  fourColorDeck: boolean;
+  showHandStrength: boolean;
+  confirmAllIn: boolean;
+  autoCheckFold: boolean;
+  haptics: boolean;
+  balance: number;
+}
+
+export interface UserStats {
+  user_id: number;
+  hands_played: number;
+  biggest_win: number;
+  biggest_loss: number;
+  win_rate: number;
+  last_played: string;
+  streak_days: number;
+  chip_balance: number;
+  rank: string;
+}
+
+export interface UserSettings {
+  user_id: number;
+  theme: "auto" | "dark" | "light";
+  notifications: boolean;
+  locale: string;
+  currency: string;
+  experimental: boolean;
+}
+
+export const apiUserStats = async (token?: string): Promise<UserStats> => {
+  const authToken = token || localStorage.getItem('session_token') || '';
+  const [backendStats, backendSettings] = await Promise.all([
+    fetchApi<BackendStats>('/user/stats', {}, authToken),
+    fetchApi<BackendSettings>('/user/settings', {}, authToken),
+  ]);
+  
+  // Transform backend response to match component expectations
+  const winRate = backendStats.hands_played > 0 
+    ? backendStats.hands_won / backendStats.hands_played 
+    : 0;
+  
+  // Calculate rank based on hands played (simple ranking system)
+  let rank = "Beginner";
+  if (backendStats.hands_played >= 1000) rank = "Expert";
+  else if (backendStats.hands_played >= 500) rank = "Advanced";
+  else if (backendStats.hands_played >= 100) rank = "Intermediate";
+  
+  // Get user_id from localStorage (stored during auth) or use 0 as fallback
+  const userId = parseInt(localStorage.getItem('user_id') || '0', 10);
+  
+  // Calculate biggest_loss from total_profit
+  const biggestLoss = backendStats.total_profit < 0 
+    ? Math.abs(backendStats.total_profit) 
+    : 0;
+  
+  return {
+    user_id: userId,
+    hands_played: backendStats.hands_played,
+    biggest_win: backendStats.biggest_pot_won,
+    biggest_loss: biggestLoss,
+    win_rate: winRate,
+    last_played: new Date().toISOString(), // Backend doesn't provide this, using current date
+    streak_days: backendStats.current_streak,
+    chip_balance: backendSettings.balance,
+    rank: rank,
+  };
+};
+
+export const apiUserSettings = async (token?: string): Promise<UserSettings> => {
+  const authToken = token || localStorage.getItem('session_token') || '';
+  const backendSettings = await fetchApi<BackendSettings>('/user/settings', {}, authToken);
+  
+  // Get user_id from localStorage (stored during auth) or use 0 as fallback
+  const userId = parseInt(localStorage.getItem('user_id') || '0', 10);
+  
+  // Transform backend response to match component expectations
+  // Backend doesn't have theme, notifications, locale, currency, experimental
+  // So we'll use defaults or derive from available data
+  return {
+    user_id: userId,
+    theme: "auto", // Default since backend doesn't provide this
+    notifications: backendSettings.haptics, // Use haptics as proxy for notifications preference
+    locale: "en", // Default
+    currency: "USD", // Default
+    experimental: backendSettings.autoCheckFold, // Use autoCheckFold as proxy for experimental features
+  };
+};
