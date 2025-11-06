@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { apiJoinTable, apiTables, TableDto } from "../services/api";
 import {
   PlayIcon,
@@ -26,7 +26,12 @@ export function LobbyPanel(props: LobbyProps) {
   const [error, setError] = useState<string | null>(null);
   const [showGroupGame, setShowGroupGame] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
+    if (!initData) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       const data = await apiTables(initData);
@@ -37,11 +42,11 @@ export function LobbyPanel(props: LobbyProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [initData]);
 
   useEffect(() => {
     load();
-  }, [initData]);
+  }, [load]);
 
   async function handleJoin(tableId: string) {
     try {

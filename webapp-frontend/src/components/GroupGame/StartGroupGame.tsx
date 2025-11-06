@@ -25,8 +25,10 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
 
   // Load available chats
   useEffect(() => {
-    loadChats();
-  }, []);
+    if (initData) {
+      loadChats();
+    }
+  }, [initData]);
 
   // Poll for game status when game is started
   useEffect(() => {
@@ -51,6 +53,11 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
   }, [gameInfo, polling, initData, onGameStarted]);
 
   const loadChats = async () => {
+    if (!initData) {
+      setError('Telegram authentication required. Please refresh the page.');
+      return;
+    }
+    
     try {
       const chatList = await listUserChats(initData);
       setChats(chatList);

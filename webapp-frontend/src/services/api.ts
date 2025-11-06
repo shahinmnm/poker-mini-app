@@ -1,6 +1,15 @@
 import { GameState, GameListItem, AuthResponse, GameAction } from '../types/game.types';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://poker.shahin8n.sbs/api';
+// Get API base URL from environment or use default
+const getApiBaseUrl = () => {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
+    return (import.meta as any).env.VITE_API_URL;
+  }
+  // Default to production API URL
+  return 'https://poker.shahin8n.sbs/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -19,7 +28,8 @@ async function fetchApi<T>(
     ...options.headers,
   };
 
-  if (token) {
+  // Only add Authorization header if token is provided and not empty
+  if (token && token.trim()) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 

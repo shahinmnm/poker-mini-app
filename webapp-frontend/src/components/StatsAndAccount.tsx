@@ -42,18 +42,28 @@ export function StatsPanel() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         setLoading(true);
         const s = await apiUserStats();
-        setStats(s as Stats);
-        setErr(null);
+        if (!cancelled) {
+          setStats(s as Stats);
+          setErr(null);
+        }
       } catch (e: any) {
-        setErr(e?.message || "Failed to load stats");
+        if (!cancelled) {
+          setErr(e?.message || "Failed to load stats");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -102,18 +112,28 @@ export function AccountPanel() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         setLoading(true);
         const s = await apiUserSettings();
-        setSettings(s as Settings);
-        setErr(null);
+        if (!cancelled) {
+          setSettings(s as Settings);
+          setErr(null);
+        }
       } catch (e: any) {
-        setErr(e?.message || "Failed to load settings");
+        if (!cancelled) {
+          setErr(e?.message || "Failed to load settings");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

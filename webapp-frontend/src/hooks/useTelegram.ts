@@ -51,12 +51,17 @@ export const useTelegram = () => {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const app = window.Telegram?.WebApp;
-    if (app) {
-      app.ready();
-      app.expand();
-      setWebApp(app);
-      setUser(app.initDataUnsafe.user);
+    try {
+      const app = window.Telegram?.WebApp;
+      if (app) {
+        app.ready();
+        app.expand();
+        setWebApp(app);
+        setUser(app.initDataUnsafe?.user || null);
+      }
+    } catch (error) {
+      console.error('Error initializing Telegram WebApp:', error);
+      // Continue without Telegram context for development/testing
     }
   }, []);
 
