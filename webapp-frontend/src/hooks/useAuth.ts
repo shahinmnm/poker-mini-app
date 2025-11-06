@@ -28,6 +28,9 @@ export const useAuth = () => {
             setSessionToken(response.session_token);
             setIsAuthenticated(true);
             localStorage.setItem('session_token', response.session_token);
+            if (response.user_id) {
+              localStorage.setItem('user_id', response.user_id.toString());
+            }
           }
         }
       } catch (err) {
@@ -42,6 +45,7 @@ export const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem('session_token');
+    localStorage.removeItem('user_id');
     setSessionToken(null);
     setIsAuthenticated(false);
   };
