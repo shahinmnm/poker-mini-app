@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+import importlib
 from datetime import datetime as dt
 import json
 import logging
@@ -11,11 +12,6 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
 import redis
-from telegram import Bot, ReplyKeyboardMarkup, Update
-from telegram.error import TelegramError
-from telegram.ext import Application, CallbackContext, ContextTypes
-from telegram.helpers import escape_markdown
-
 from pokerapp.config import Config, STAKE_PRESETS
 from pokerapp.cards import Cards, get_shuffled_deck
 from pokerapp.privatechatmodel import UserPrivateChatModel
@@ -44,6 +40,26 @@ from pokerapp.live_message import UnicodeTextFormatter
 from pokerapp.kvstore import ensure_kv
 from pokerapp.winnerdetermination import get_combination_name
 from pokerapp.request_cache import RequestCache
+
+try:
+    _telegram = importlib.import_module("telegram")
+    _telegram_error = importlib.import_module("telegram.error")
+    _telegram_ext = importlib.import_module("telegram.ext")
+    _telegram_helpers = importlib.import_module("telegram.helpers")
+except ModuleNotFoundError as exc:  # pragma: no cover - defensive dependency check
+    raise RuntimeError(
+        "python-telegram-bot is required to run PokerBotModel. "
+        "Install it with 'pip install python-telegram-bot'."
+    ) from exc
+
+Bot = _telegram.Bot
+ReplyKeyboardMarkup = _telegram.ReplyKeyboardMarkup
+Update = _telegram.Update
+TelegramError = _telegram_error.TelegramError
+Application = _telegram_ext.Application
+CallbackContext = _telegram_ext.CallbackContext
+ContextTypes = _telegram_ext.ContextTypes
+escape_markdown = _telegram_helpers.escape_markdown
 
 
 logger = logging.getLogger(__name__)
