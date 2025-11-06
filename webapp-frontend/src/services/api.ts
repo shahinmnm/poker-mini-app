@@ -140,7 +140,7 @@ export const startGroupGame = async (
   token: string,
   miniappUrl?: string
 ): Promise<GroupGameInfo> => {
-  return fetchApi<GroupGameInfo>(
+  const result = await fetchApi<GroupGameInfo>(
     '/group-game/start',
     {
       method: 'POST',
@@ -148,6 +148,11 @@ export const startGroupGame = async (
     },
     token
   );
+  // Ensure players is always an array
+  if (result && !Array.isArray(result.players)) {
+    result.players = [];
+  }
+  return result;
 };
 
 export const joinGroupGame = async (
@@ -155,7 +160,7 @@ export const joinGroupGame = async (
   token: string,
   userName?: string
 ): Promise<GroupGameInfo> => {
-  return fetchApi<GroupGameInfo>(
+  const result = await fetchApi<GroupGameInfo>(
     '/group-game/join',
     {
       method: 'POST',
@@ -163,17 +168,29 @@ export const joinGroupGame = async (
     },
     token
   );
+  // Ensure players is always an array
+  if (result && !Array.isArray(result.players)) {
+    result.players = [];
+  }
+  return result;
 };
 
 export const getGroupGame = async (
   gameId: string,
   token: string
 ): Promise<GroupGameInfo> => {
-  return fetchApi<GroupGameInfo>(`/group-game/${gameId}`, {}, token);
+  const result = await fetchApi<GroupGameInfo>(`/group-game/${gameId}`, {}, token);
+  // Ensure players is always an array
+  if (result && !Array.isArray(result.players)) {
+    result.players = [];
+  }
+  return result;
 };
 
 export const listUserChats = async (token: string): Promise<ChatInfo[]> => {
-  return fetchApi<ChatInfo[]>('/group-game/chats/list', {}, token);
+  const result = await fetchApi<ChatInfo[]>('/group-game/chats/list', {}, token);
+  // Ensure we always return an array
+  return Array.isArray(result) ? result : [];
 };
 
 export const sendMiniappToGroup = async (
@@ -207,7 +224,9 @@ export interface TableDto {
 }
 
 export const apiTables = async (token?: string): Promise<TableDto[]> => {
-  return fetchApi<TableDto[]>('/tables', {}, token);
+  const result = await fetchApi<TableDto[]>('/tables', {}, token);
+  // Ensure we always return an array
+  return Array.isArray(result) ? result : [];
 };
 
 export const apiJoinTable = async (tableId: string, token?: string): Promise<{ success: boolean; table_id: string }> => {
