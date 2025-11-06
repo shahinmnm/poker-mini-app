@@ -7,7 +7,6 @@ import logging
 import os
 from typing import Dict, List, Optional, Any
 
-import httpx
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 
@@ -142,8 +141,16 @@ class BotService:
             bot = self._get_bot()
 
             player_count = len(players)
+            def format_player_name(p: Dict[str, Any]) -> str:
+                """Format player name with fallback."""
+                name = p.get('name')
+                if name:
+                    return name
+                player_id = p.get('id', '?')
+                return f'Player {player_id}'
+            
             player_list = "\n".join(
-                [f"  • {p.get('name', f\"Player {p.get('id', '?')}\")}" for p in players]
+                [f"  • {format_player_name(p)}" for p in players]
             ) if players else "  (No players yet)"
 
             status_text = (
