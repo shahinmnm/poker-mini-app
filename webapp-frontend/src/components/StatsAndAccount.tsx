@@ -14,6 +14,7 @@ import {
   UserIcon,
 } from "./icons";
 import { apiUserSettings, apiUserStats } from "../services/api";
+import { useTelegram } from "../hooks/useTelegram";
 
 type Stats = {
   user_id: number;
@@ -37,6 +38,7 @@ type Settings = {
 };
 
 export function StatsPanel() {
+  const { initData } = useTelegram();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export function StatsPanel() {
     (async () => {
       try {
         setLoading(true);
-        const s = await apiUserStats();
+        const s = await apiUserStats(initData);
         if (!cancelled) {
           setStats(s as Stats);
           setErr(null);
@@ -107,6 +109,7 @@ export function StatsPanel() {
 }
 
 export function AccountPanel() {
+  const { initData } = useTelegram();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -116,7 +119,7 @@ export function AccountPanel() {
     (async () => {
       try {
         setLoading(true);
-        const s = await apiUserSettings();
+        const s = await apiUserSettings(initData);
         if (!cancelled) {
           setSettings(s as Settings);
           setErr(null);

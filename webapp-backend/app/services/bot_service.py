@@ -100,12 +100,20 @@ class BotService:
             return message.message_id
 
         except TelegramError as e:
+            error_message = str(e).lower()
+            if "chat not found" in error_message or "bot is not a member" in error_message:
+                logger.warning(
+                    "Bot is not a member of chat %s. User needs to add bot to group first.",
+                    chat_id,
+                )
+                # Raise a specific error that can be caught and displayed to user
+                raise ValueError("Bot is not a member of this group. Please add the bot to the group first.")
             logger.error(
                 "Failed to send group game invite to chat %s: %s",
                 chat_id,
                 e,
             )
-            return None
+            raise
         except Exception as e:
             logger.error(
                 "Unexpected error sending group game invite: %s",
