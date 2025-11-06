@@ -8,6 +8,7 @@ import {
   CoinsIcon,
   TrophyIcon,
 } from "./icons";
+import { StartGroupGame } from "./GroupGame/StartGroupGame";
 
 type LobbyProps = {
   onOpenGame?: () => void;
@@ -22,6 +23,7 @@ export function LobbyPanel(props: LobbyProps) {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showGroupGame, setShowGroupGame] = useState(false);
 
   async function load() {
     try {
@@ -76,6 +78,51 @@ export function LobbyPanel(props: LobbyProps) {
 
       <div className="hr" />
 
+      {showGroupGame ? (
+        <StartGroupGame
+          onGameStarted={(gameId) => {
+            setShowGroupGame(false);
+            props.onOpenGame?.();
+          }}
+        />
+      ) : (
+        <>
+          <div style={{ marginBottom: "1rem", padding: "0 0.5rem" }}>
+            <button
+              className="btn"
+              onClick={() => setShowGroupGame(true)}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                background: "var(--primary, #007bff)",
+                color: "white",
+                border: "none",
+                borderRadius: "0.5rem",
+                fontSize: "1rem",
+                fontWeight: "500",
+                cursor: "pointer",
+              }}
+            >
+              🎮 Start Group Game
+            </button>
+            <p
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "0.85rem",
+                color: "var(--text-dim, #666)",
+                textAlign: "center",
+              }}
+            >
+              Start a game in a Telegram group
+            </p>
+          </div>
+          <div className="hr" />
+        </>
+      )}
+
+      {!showGroupGame && (
+        <>
+
       {loading && <div className="pill">Loading tables…</div>}
       {error && <div className="pill" style={{ color: "var(--error)" }}>{error}</div>}
       {!loading && !error && (
@@ -107,6 +154,8 @@ export function LobbyPanel(props: LobbyProps) {
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );

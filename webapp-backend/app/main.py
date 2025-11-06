@@ -105,6 +105,14 @@ def user_stats(ident: Identity = Depends(get_identity)) -> Dict[str, Any]:
 app.include_router(router)
 app.include_router(router, prefix="/api")
 
+# Include group game routes
+try:
+    from app.routes import group_game
+    app.include_router(group_game.router, prefix="/api")
+    log.info("✅ Group game routes registered")
+except Exception as e:
+    log.warning("⚠️ Could not load group game routes: %s", e)
+
 
 # ---- Startup log of routes (for your diagnostics) ----
 @app.on_event("startup")

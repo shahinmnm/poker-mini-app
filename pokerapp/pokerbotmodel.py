@@ -4539,6 +4539,164 @@ class PokerBotModel:
         finally:
             self._clear_request_cache()
 
+    async def join_group_game(
+        self,
+        update: Update,
+        context: CallbackContext,
+        game_id: str,
+        user_id: int,
+        user_name: str,
+    ) -> None:
+        """
+        Handle joining a group game from inline button callback.
+        
+        This method:
+        1. Adds the player to the game in Redis
+        2. Updates the group message with new player count
+        3. Checks if game can auto-start
+        """
+        import os
+        import json
+        from datetime import datetime, timezone
+
+        chat = update.effective_chat
+        if chat is None:
+            self._logger.error("No chat in update for group game join")
+            return
+
+        chat_id = chat.id
+
+        # Redis keys (matching backend)
+        GROUP_GAME_META_PREFIX = "group_game_meta:"
+        GROUP_GAME_PLAYERS_PREFIX = "group_game_players:"
+
+        meta_key = f"{GROUP_GAME_META_PREFIX}{game_id}"
+        players_key = f"{GROUP_GAME_PLAYERS_PREFIX}{game_id}"
+
+        try:
+            # Get game metadata
+            meta_data = self._kv.get(meta_key)
+            if not meta_data:
+                self._logger.warning("Group game %s not found in Redis", game_id)
+                return
+
+            if isinstance(meta_data, bytes):
+                meta_data = meta_data.decode("utf-8")
+            game_meta = json.loads(meta_data)
+
+            # Get current players
+            players_data = self._kv.get(players_key)
+            if players_data:
+                if isinstance(players_data, bytes):
+                    players_data = players_data.decode("utf-8")
+                players = json.loads(players_data)
+            else:
+                players = []
+
+            # Check if already joined
+            if any(p.get("id") == user_id for p in players):
+                self._logger.info("User %s already in game %s", user_id, game_id)
+                return
+
+            # Add player
+            players.append({
+                "id": user_id,
+                "name": user_name,
+                "joined_at": datetime.now(timezone.utc).isoformat(),
+            })
+
+            # Update Redis
+            self._kv.setex(players_key, 3600, json.dumps(players))
+            
+            # Update group message via bot service (if available) or directly
+            message_id = game_meta.get("message_id")
+            if message_id:
+                try:
+                    # Try to use bot service from backend (via HTTP if needed)
+                    # For now, update message directly via bot API
+                    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                    
+                    player_count = len(players)
+                    min_players = game_meta.get("min_players", 2)
+                    
+                    player_list = "\n".join(
+                        [f"  • {p.get('name', f'Player {p.get(\"id\", \"?\")}')}" for p in players]
+                    ) if players else "  (No players yet)"
+
+                    status_text = (
+                        f"✅ Ready to start! ({player_count}/{min_players}+)"
+                        if player_count >= min_players
+                        else f"⏳ Waiting... ({player_count}/{min_players} players)"
+                    )
+
+                    message_text = (
+                        f"🎮 **Group Poker Game**\n\n"
+                        f"**Players:**\n{player_list}\n\n"
+                        f"{status_text}\n\n"
+                        f"Tap below to join!"
+                    )
+
+                    keyboard_buttons = [
+                        [
+                            InlineKeyboardButton(
+                                text="✅ Tap to Sit",
+                                callback_data=f"group_game_join:{game_id}",
+                            )
+                        ]
+                    ]
+
+                    miniapp_url = os.getenv("MINIAPP_URL", "")
+                    if miniapp_url:
+                        keyboard_buttons.append(
+                            [
+                                InlineKeyboardButton(
+                                    text="🎮 Open Game",
+                                    web_app={"url": miniapp_url},
+                                )
+                            ]
+                        )
+
+                    reply_markup = InlineKeyboardMarkup(keyboard_buttons)
+
+                    await self._bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=message_text,
+                        reply_markup=reply_markup,
+                        parse_mode="Markdown",
+                    )
+
+                    self._logger.info(
+                        "Updated group game message %s with %d players",
+                        message_id,
+                        player_count,
+                    )
+                except Exception as e:
+                    self._logger.error(
+                        "Failed to update group game message: %s",
+                        e,
+                        exc_info=True,
+                    )
+
+            # Check if we can auto-start (enough players)
+            min_players = game_meta.get("min_players", 2)
+            if len(players) >= min_players and game_meta.get("status") == "waiting":
+                # Mark as starting - actual game start will be handled separately
+                game_meta["status"] = "starting"
+                self._kv.setex(meta_key, 3600, json.dumps(game_meta))
+                
+                # Optionally trigger game start here
+                # For now, we'll let the backend/mini-app handle actual game start
+
+        except Exception as e:
+            self._logger.error(
+                "Failed to join group game %s: %s",
+                game_id,
+                e,
+                exc_info=True,
+            )
+            raise
+
 
 class WalletManagerModel(Wallet):
     def __init__(self, user_id: UserId, kv: Optional[redis.Redis]):

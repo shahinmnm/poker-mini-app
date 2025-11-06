@@ -1,0 +1,132 @@
+.start-group-game {
+  padding: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.start-group-game h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: var(--text-primary, #000);
+}
+
+.description {
+  color: var(--text-dim, #666);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  background: var(--error-bg, #fee);
+  color: var(--error, #c00);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.chat-selector,
+.chat-input {
+  margin-bottom: 1.5rem;
+}
+
+.chat-selector label,
+.chat-input label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary, #000);
+}
+
+.chat-select,
+.chat-id-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.chat-input small {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--text-dim, #666);
+  font-size: 0.85rem;
+}
+
+.btn-primary,
+.btn-secondary {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-primary {
+  background: var(--primary, #007bff);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--secondary, #6c757d);
+  color: white;
+  margin-top: 1rem;
+}
+
+.group-game-status {
+  padding: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.group-game-status h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  color: var(--text-primary, #000);
+}
+
+.game-info {
+  background: var(--card-bg, #f9f9f9);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.game-info p {
+  margin: 0.5rem 0;
+  color: var(--text-primary, #000);
+}
+
+.players-list {
+  margin: 1rem 0;
+  padding-left: 1rem;
+}
+
+.player-item {
+  margin: 0.25rem 0;
+  color: var(--text-primary, #000);
+}
+
+.waiting-message {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--info-bg, #e7f3ff);
+  border-radius: 0.5rem;
+  color: var(--info, #0066cc);
+  font-size: 0.9rem;
+}
+
