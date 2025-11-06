@@ -3,65 +3,38 @@ from __future__ import annotations
 
 import os
 import logging
-from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, APIRouter, Depends, Header, Query, HTTPException
+from typing import List, Dict, Any
+from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 log = logging.getLogger("app.main")
 logging.basicConfig(level=logging.INFO)
 
 # ---- CORS ----
+DEFAULT_ALLOWED_ORIGINS = [
+    "https://poker.shahin8n.sbs",
+    "https://t.me",
+    "https://web.telegram.org",
+]
+
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
-CORS_ORIGINS: List[str] = (
-    [o.strip() for o in cors_origins_env.split(",") if o.strip()] or ["*"]
-)
+extra_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+CORS_ORIGINS: List[str] = list(dict.fromkeys(DEFAULT_ALLOWED_ORIGINS + extra_origins))
 
 app = FastAPI(title="Poker WebApp API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "X-Telegram-Init-Data", "Content-Type"],
     allow_credentials=True,
 )
 
 log.info("🚀 Poker WebApp API starting...")
 log.info("📍 CORS origins: %s", CORS_ORIGINS)
 
-# ---- Identity helper ----
-class Identity(Dict[str, Any]):
-    user_id: int
-
-def get_identity(
-    request: Request,
-    x_telegram_init_data: Optional[str] = Header(default=None, alias="X-Telegram-Init-Data"),
-    authorization: Optional[str] = Header(default=None),
-    user_id: Optional[int] = Query(default=None),
-) -> Identity:
-    """
-    Accept identity from Telegram header (no signature verification for dev),
-    or from Authorization Bearer token (initData),
-    or from `?user_id=` as a local/dev fallback.
-    """
-    # Try X-Telegram-Init-Data header first
-    if x_telegram_init_data:
-        # In production you'd verify the signature. For now we only need a stable id.
-        return Identity(user_id=1)
-    
-    # Try Authorization: Bearer <initData>
-    if authorization and authorization.lower().startswith("bearer "):
-        init_data = authorization.split(" ", 1)[1].strip()
-        if init_data:
-            # In production you'd verify the signature. For now we only need a stable id.
-            return Identity(user_id=1)
-    
-    # Dev fallback
-    if user_id is not None:
-        return Identity(user_id=int(user_id))
-    
-    raise HTTPException(status_code=401, detail="Missing user identity")
+# ---- Auth helpers ----
+from app.auth import UserContext, create_user_jwt, require_telegram_user
 
 # ---- Mock data ----
 MOCK_TABLES = [
@@ -83,16 +56,16 @@ def list_tables() -> Dict[str, Any]:
     return {"tables": MOCK_TABLES}
 
 @router.post("/tables/{table_id}/join")
-def join_table(table_id: str, ident: Identity = Depends(get_identity)) -> Dict[str, Any]:
+def join_table(table_id: str, user: UserContext = Depends(require_telegram_user)) -> Dict[str, Any]:
     exists = any(t["id"] == table_id for t in MOCK_TABLES)
     if not exists:
         raise HTTPException(status_code=404, detail="Table not found")
-    return {"ok": True, "joined": True, "table_id": table_id, "user_id": ident["user_id"]}
+    return {"ok": True, "joined": True, "table_id": table_id, "user_id": user.id}
 
 @router.get("/user/settings")
-def user_settings(ident: Identity = Depends(get_identity)) -> Dict[str, Any]:
+def user_settings(user: UserContext = Depends(require_telegram_user)) -> Dict[str, Any]:
     return {
-        "user_id": ident["user_id"],
+        "user_id": user.id,
         "theme": "auto",
         "notifications": True,
         "locale": "en",
@@ -101,10 +74,10 @@ def user_settings(ident: Identity = Depends(get_identity)) -> Dict[str, Any]:
     }
 
 @router.get("/user/stats")
-def user_stats(ident: Identity = Depends(get_identity)) -> Dict[str, Any]:
+def user_stats(user: UserContext = Depends(require_telegram_user)) -> Dict[str, Any]:
     from datetime import datetime, timezone
     return {
-        "user_id": ident["user_id"],
+        "user_id": user.id,
         "hands_played": 124,
         "biggest_win": 15200,
         "biggest_loss": -4800,
@@ -114,6 +87,12 @@ def user_stats(ident: Identity = Depends(get_identity)) -> Dict[str, Any]:
         "chip_balance": 25000,
         "rank": "Rising Shark",
     }
+
+
+@router.post("/auth/exchange")
+def exchange_token(user: UserContext = Depends(require_telegram_user)) -> Dict[str, Any]:
+    token = create_user_jwt(user)
+    return {"token": token, "expires_in": int(os.getenv("TELEGRAM_JWT_TTL", "900"))}
 
 # Mount once at / and once at /api (so both work)
 app.include_router(router)

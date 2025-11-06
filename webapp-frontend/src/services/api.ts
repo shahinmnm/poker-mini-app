@@ -1,15 +1,33 @@
 import { GameState, GameListItem, AuthResponse, GameAction } from '../types/game.types';
 
-// Get API base URL from environment or use default
-const getApiBaseUrl = () => {
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
-    return (import.meta as any).env.VITE_API_URL;
+type HeadersRecord = Record<string, string>;
+
+interface ClientUserContext {
+  id: number;
+  username?: string | null;
+  lang?: string | null;
+}
+
+const resolvePublicOrigin = (): string => {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PUBLIC_ORIGIN) {
+    return ((import.meta as any).env.VITE_PUBLIC_ORIGIN as string).replace(/\/$/, '');
   }
-  // Default to production API URL
-  return 'https://poker.shahin8n.sbs/api';
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '');
+  }
+  return 'https://poker.shahin8n.sbs';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+const PUBLIC_ORIGIN = resolvePublicOrigin();
+
+const resolveApiBaseUrl = () => {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
+    return (import.meta as any).env.VITE_API_URL as string;
+  }
+  return `${PUBLIC_ORIGIN}/api`;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -18,29 +36,169 @@ class ApiError extends Error {
   }
 }
 
-async function fetchApi<T>(
-  endpoint: string,
-  options: RequestInit = {},
-  token?: string
-): Promise<T> {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+class ExchangeUnavailableError extends Error {}
+class ExchangeAuthError extends Error {}
 
-  // Only add Authorization header if token is provided and not empty
-  if (token && token.trim()) {
-    headers['Authorization'] = `Bearer ${token}`;
+let cachedInitData: string | null = null;
+let cachedJwt: string | null = null;
+let cachedUser: ClientUserContext | null = null;
+let exchangeSupported: boolean | null = null;
+let bootstrapPromise: Promise<void> | null = null;
+
+const readTelegramInitData = (): string | null => {
+  try {
+    const tg = (window as any)?.Telegram?.WebApp;
+    return tg?.initData || null;
+  } catch {
+    return null;
   }
+};
+
+const parseUserFromInitData = (initData: string | null): ClientUserContext | null => {
+  if (!initData) return null;
+  try {
+    const params = new URLSearchParams(initData);
+    const rawUser = params.get('user');
+    if (!rawUser) return null;
+    const user = JSON.parse(rawUser);
+    if (!user?.id) return null;
+    return {
+      id: Number(user.id),
+      username: user.username ?? null,
+      lang: user.language_code ?? user.lang ?? null,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const getAuthHeaders = (): HeadersRecord => {
+  const headers: HeadersRecord = {};
+  if (cachedJwt) {
+    headers['Authorization'] = `Bearer ${cachedJwt}`;
+  } else if (cachedInitData) {
+    headers['X-Telegram-Init-Data'] = cachedInitData;
+  }
+  return headers;
+};
+
+const exchangeForJwt = async (initData: string): Promise<string> => {
+  const response = await fetch(`${API_BASE_URL}/auth/exchange`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': initData,
+    },
+    body: JSON.stringify({ initData }),
+  });
+
+  if (response.status === 404) {
+    throw new ExchangeUnavailableError('exchange endpoint unavailable');
+  }
+
+  if (response.status === 401) {
+    throw new ExchangeAuthError('initData rejected');
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ detail: 'Request failed' }));
+    throw new ApiError(response.status, payload.detail || 'Failed to exchange token');
+  }
+
+  const payload = await response.json();
+  if (!payload?.token) {
+    throw new ApiError(response.status, 'Invalid exchange response');
+  }
+  return payload.token as string;
+};
+
+const refreshAuth = async (force = false): Promise<boolean> => {
+  const latestInitData = readTelegramInitData();
+  const initDataChanged = latestInitData !== cachedInitData;
+  if (!latestInitData) {
+    cachedInitData = null;
+    cachedJwt = null;
+    cachedUser = null;
+    return false;
+  }
+
+  if (!force && !initDataChanged && (cachedJwt || exchangeSupported === false)) {
+    return false;
+  }
+
+  cachedInitData = latestInitData;
+  cachedUser = parseUserFromInitData(latestInitData);
+
+  if (exchangeSupported === false) {
+    cachedJwt = null;
+    return initDataChanged;
+  }
+
+  try {
+    cachedJwt = await exchangeForJwt(latestInitData);
+    exchangeSupported = true;
+    return true;
+  } catch (error) {
+    if (error instanceof ExchangeUnavailableError) {
+      exchangeSupported = false;
+      cachedJwt = null;
+      return initDataChanged;
+    }
+    if (error instanceof ExchangeAuthError) {
+      cachedJwt = null;
+      return initDataChanged;
+    }
+    throw error;
+  }
+};
+
+export const bootstrapTelegramAuth = async (): Promise<void> => {
+  if (!bootstrapPromise) {
+    bootstrapPromise = refreshAuth(true).catch((error) => {
+      console.warn('Failed to bootstrap Telegram auth:', error);
+    }).finally(() => {
+      bootstrapPromise = null;
+    });
+  }
+  await bootstrapPromise;
+};
+
+export const getCachedTelegramUser = (): ClientUserContext | null => cachedUser;
+
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}, retry = true): Promise<T> {
+  await bootstrapTelegramAuth();
+
+  const headers = new Headers(options.headers || {});
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const authHeaders = getAuthHeaders();
+  Object.entries(authHeaders).forEach(([key, value]) => {
+    if (value) {
+      headers.set(key, value);
+    }
+  });
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: options.credentials ?? 'include',
   });
+
+  if (response.status === 401 && retry) {
+    await refreshAuth(true);
+    return fetchApi<T>(endpoint, options, false);
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
     throw new ApiError(response.status, error.detail || 'Request failed');
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json();
@@ -55,44 +213,41 @@ export const authenticateWithTelegram = async (initData: string): Promise<AuthRe
 };
 
 // Game endpoints
-export const getGameList = async (token: string): Promise<GameListItem[]> => {
-  return fetchApi('/game/list', {}, token);
+export const getGameList = async (_token?: string): Promise<GameListItem[]> => {
+  return fetchApi('/game/list');
 };
 
-export const getGameState = async (gameId: string, token: string): Promise<GameState> => {
-  return fetchApi(`/game/state/${gameId}`, {}, token);
+export const getGameState = async (gameId: string, _token?: string): Promise<GameState> => {
+  return fetchApi(`/game/state/${gameId}`);
 };
 
-export const joinGame = async (gameId: string, token: string): Promise<{ success: boolean }> => {
+export const joinGame = async (gameId: string, _token?: string): Promise<{ success: boolean }> => {
   return fetchApi(
     '/game/join',
     {
       method: 'POST',
       body: JSON.stringify({ game_id: gameId }),
-    },
-    token
+    }
   );
 };
 
-export const performAction = async (action: GameAction, token: string): Promise<{ success: boolean }> => {
+export const performAction = async (action: GameAction, _token?: string): Promise<{ success: boolean }> => {
   return fetchApi(
     '/game/action',
     {
       method: 'POST',
       body: JSON.stringify(action),
-    },
-    token
+    }
   );
 };
 
-export const leaveGame = async (gameId: string, token: string): Promise<{ success: boolean }> => {
+export const leaveGame = async (gameId: string, _token?: string): Promise<{ success: boolean }> => {
   return fetchApi(
     '/game/leave',
     {
       method: 'POST',
       body: JSON.stringify({ game_id: gameId }),
-    },
-    token
+    }
   );
 };
 
@@ -103,7 +258,7 @@ interface CreateGameResponse {
 
 export const createGame = async (
   stakeLevel: string,
-  token: string,
+  _token?: string,
   mode: string = 'private'
 ): Promise<CreateGameResponse> => {
   return fetchApi(
@@ -111,8 +266,7 @@ export const createGame = async (
     {
       method: 'POST',
       body: JSON.stringify({ stake_level: stakeLevel, mode }),
-    },
-    token
+    }
   );
 };
 
@@ -137,7 +291,7 @@ export interface ChatInfo {
 
 export const startGroupGame = async (
   chatId: number,
-  token: string,
+  _token?: string,
   miniappUrl?: string
 ): Promise<GroupGameInfo> => {
   const result = await fetchApi<GroupGameInfo>(
@@ -145,8 +299,7 @@ export const startGroupGame = async (
     {
       method: 'POST',
       body: JSON.stringify({ chat_id: chatId, miniapp_url: miniappUrl }),
-    },
-    token
+    }
   );
   // Ensure players is always an array
   if (result && !Array.isArray(result.players)) {
@@ -157,7 +310,7 @@ export const startGroupGame = async (
 
 export const joinGroupGame = async (
   gameId: string,
-  token: string,
+  _token?: string,
   userName?: string
 ): Promise<GroupGameInfo> => {
   const result = await fetchApi<GroupGameInfo>(
@@ -165,8 +318,7 @@ export const joinGroupGame = async (
     {
       method: 'POST',
       body: JSON.stringify({ game_id: gameId, user_name: userName }),
-    },
-    token
+    }
   );
   // Ensure players is always an array
   if (result && !Array.isArray(result.players)) {
@@ -177,9 +329,9 @@ export const joinGroupGame = async (
 
 export const getGroupGame = async (
   gameId: string,
-  token: string
+  _token?: string
 ): Promise<GroupGameInfo> => {
-  const result = await fetchApi<GroupGameInfo>(`/group-game/${gameId}`, {}, token);
+  const result = await fetchApi<GroupGameInfo>(`/group-game/${gameId}`);
   // Ensure players is always an array
   if (result && !Array.isArray(result.players)) {
     result.players = [];
@@ -187,8 +339,8 @@ export const getGroupGame = async (
   return result;
 };
 
-export const listUserChats = async (token: string): Promise<ChatInfo[]> => {
-  const result = await fetchApi<ChatInfo[]>('/group-game/chats/list', {}, token);
+export const listUserChats = async (_token?: string): Promise<ChatInfo[]> => {
+  const result = await fetchApi<ChatInfo[]>('/group-game/chats/list');
   // Ensure we always return an array
   return Array.isArray(result) ? result : [];
 };
@@ -196,7 +348,7 @@ export const listUserChats = async (token: string): Promise<ChatInfo[]> => {
 export const sendMiniappToGroup = async (
   gameId: string,
   chatId: number,
-  token: string,
+  _token?: string,
   miniappUrl?: string
 ): Promise<{ success: boolean; message_id?: number }> => {
   return fetchApi<{ success: boolean; message_id?: number }>(
@@ -204,8 +356,7 @@ export const sendMiniappToGroup = async (
     {
       method: 'POST',
       body: JSON.stringify({ miniapp_url: miniappUrl }),
-    },
-    token
+    }
   );
 };
 
@@ -223,19 +374,18 @@ export interface TableDto {
   is_private?: boolean;
 }
 
-export const apiTables = async (token?: string): Promise<TableDto[]> => {
-  const result = await fetchApi<TableDto[]>('/tables', {}, token);
+export const apiTables = async (_token?: string): Promise<TableDto[]> => {
+  const result = await fetchApi<TableDto[]>('/tables');
   // Ensure we always return an array
   return Array.isArray(result) ? result : [];
 };
 
-export const apiJoinTable = async (tableId: string, token?: string): Promise<{ success: boolean; table_id: string }> => {
+export const apiJoinTable = async (tableId: string, _token?: string): Promise<{ success: boolean; table_id: string }> => {
   return fetchApi<{ success: boolean; table_id: string }>(
     `/tables/${tableId}/join`,
     {
       method: 'POST',
-    },
-    token
+    }
   );
 };
 
@@ -280,11 +430,10 @@ export interface UserSettings {
   experimental: boolean;
 }
 
-export const apiUserStats = async (token?: string): Promise<UserStats> => {
-  const authToken = token || localStorage.getItem('session_token') || '';
+export const apiUserStats = async (_token?: string): Promise<UserStats> => {
   const [backendStats, backendSettings] = await Promise.all([
-    fetchApi<BackendStats>('/user/stats', {}, authToken),
-    fetchApi<BackendSettings>('/user/settings', {}, authToken),
+    fetchApi<BackendStats>('/user/stats'),
+    fetchApi<BackendSettings>('/user/settings'),
   ]);
   
   // Transform backend response to match component expectations
@@ -298,8 +447,7 @@ export const apiUserStats = async (token?: string): Promise<UserStats> => {
   else if (backendStats.hands_played >= 500) rank = "Advanced";
   else if (backendStats.hands_played >= 100) rank = "Intermediate";
   
-  // Get user_id from localStorage (stored during auth) or use 0 as fallback
-  const userId = parseInt(localStorage.getItem('user_id') || '0', 10);
+  const userId = getCachedTelegramUser()?.id ?? 0;
   
   // Calculate biggest_loss from total_profit
   const biggestLoss = backendStats.total_profit < 0 
@@ -319,12 +467,10 @@ export const apiUserStats = async (token?: string): Promise<UserStats> => {
   };
 };
 
-export const apiUserSettings = async (token?: string): Promise<UserSettings> => {
-  const authToken = token || localStorage.getItem('session_token') || '';
-  const backendSettings = await fetchApi<BackendSettings>('/user/settings', {}, authToken);
-  
-  // Get user_id from localStorage (stored during auth) or use 0 as fallback
-  const userId = parseInt(localStorage.getItem('user_id') || '0', 10);
+export const apiUserSettings = async (_token?: string): Promise<UserSettings> => {
+  const backendSettings = await fetchApi<BackendSettings>('/user/settings');
+
+  const userId = getCachedTelegramUser()?.id ?? 0;
   
   // Transform backend response to match component expectations
   // Backend doesn't have theme, notifications, locale, currency, experimental

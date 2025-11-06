@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { bootstrapTelegramAuth } from './services/api';
 
 /**
  * main.tsx
@@ -72,6 +73,11 @@ import { ErrorBoundary } from './components/ErrorBoundary';
     // Safe no-op if Telegram API not available
   }
 })();
+
+// Kick off Telegram auth bootstrapping (non-blocking)
+bootstrapTelegramAuth().catch((error) => {
+  console.warn('Telegram auth bootstrap failed:', error);
+});
 
 // Mount React app
 const container = document.getElementById('root');
