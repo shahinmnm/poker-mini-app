@@ -71,7 +71,8 @@ Operational considerations for the lobby workflow—including race conditions, R
    *inside the `.env` file so the bot starts in webhook mode by default.*
 
     > Get token from [@BotFather](https://telegram.me/BotFather).
-3. Start the bot `make up`.
+3. (Optional) If you already have something bound to port 80, set `WEBAPP_FRONTEND_PORT` in your `.env` file (defaults to `8080`).
+4. Start the bot `make up`.
 
 ### FAQ
 
