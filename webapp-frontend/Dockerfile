@@ -1,8 +1,9 @@
 # Stage 1: Build
 FROM node:20-alpine AS builder
 ARG WEBAPP_PUBLIC_ORIGIN=https://poker.shahin8n.sbs
+ARG WEBAPP_API_URL=/api
 ENV VITE_PUBLIC_ORIGIN=${WEBAPP_PUBLIC_ORIGIN}
-ENV VITE_API_URL=${WEBAPP_PUBLIC_ORIGIN}/api
+ENV VITE_API_URL=${WEBAPP_API_URL}
 WORKDIR /app
 COPY package*.json ./
 COPY scripts ./scripts
