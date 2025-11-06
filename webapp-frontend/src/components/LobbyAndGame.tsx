@@ -1,6 +1,6 @@
 // webapp-frontend/src/components/LobbyAndGame.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { apiJoinTable, apiTables, TableDto } from "../lib/api";
+import { apiJoinTable, apiTables, TableDto } from "../services/api";
 import {
   PlayIcon,
   LockIcon,
@@ -9,6 +9,7 @@ import {
   TrophyIcon,
 } from "./icons";
 import { StartGroupGame } from "./GroupGame/StartGroupGame";
+import { useTelegram } from "../hooks/useTelegram";
 
 type LobbyProps = {
   onOpenGame?: () => void;
@@ -19,6 +20,7 @@ type GameProps = {
 };
 
 export function LobbyPanel(props: LobbyProps) {
+  const { initData } = useTelegram();
   const [tables, setTables] = useState<TableDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function LobbyPanel(props: LobbyProps) {
   async function load() {
     try {
       setLoading(true);
-      const data = await apiTables();
+      const data = await apiTables(initData);
       setTables(data);
       setError(null);
     } catch (e: any) {
@@ -40,12 +42,12 @@ export function LobbyPanel(props: LobbyProps) {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [initData]);
 
   async function handleJoin(tableId: string) {
     try {
       setJoining(tableId);
-      await apiJoinTable(tableId);
+      await apiJoinTable(tableId, initData);
       setError(null);
       // After successful join, move to "Game"
       props.onOpenGame?.();

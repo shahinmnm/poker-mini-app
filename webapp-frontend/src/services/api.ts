@@ -181,3 +181,31 @@ export const sendMiniappToGroup = async (
     token
   );
 };
+
+// Tables endpoints
+export interface TableDto {
+  id: string;
+  name: string;
+  bb: number;
+  max_players: number;
+  seated: number;
+  private: boolean;
+  stakes?: string;
+  players_count?: number;
+  status?: string;
+  is_private?: boolean;
+}
+
+export const apiTables = async (token?: string): Promise<TableDto[]> => {
+  return fetchApi<TableDto[]>('/tables', {}, token);
+};
+
+export const apiJoinTable = async (tableId: string, token?: string): Promise<{ success: boolean; table_id: string }> => {
+  return fetchApi<{ success: boolean; table_id: string }>(
+    `/tables/${tableId}/join`,
+    {
+      method: 'POST',
+    },
+    token
+  );
+};
