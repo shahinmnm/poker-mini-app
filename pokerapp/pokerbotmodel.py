@@ -11,7 +11,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
-import redis
+import redis  # type: ignore # noqa: F401
 from pokerapp.config import Config, STAKE_PRESETS
 from pokerapp.cards import Cards, get_shuffled_deck
 from pokerapp.privatechatmodel import UserPrivateChatModel
@@ -2126,6 +2126,15 @@ class PokerBotModel:
         )
 
         # Notify host
+        player_handle = getattr(user, "username", None)
+        if player_handle:
+            player_display = f"@{player_handle}"
+        else:
+            player_display = getattr(user, "full_name", None) or getattr(
+                user, "first_name", None
+            )
+            if not player_display:
+                player_display = str(user.id)
         await context.bot.send_message(
             chat_id=private_game.host_user_id,
             text=self._translate(
