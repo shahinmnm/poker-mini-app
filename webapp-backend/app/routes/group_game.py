@@ -144,20 +144,24 @@ async def start_group_game(
         miniapp_url = request.miniapp_url or os.getenv(
             "MINIAPP_URL", "https://your-miniapp-url.com"
         )
-        message_id = await bot_service.send_group_game_invite(
-            chat_id=request.chat_id,
-            initiator_name=game_meta["initiator_name"],
-            game_id=game_id,
-            miniapp_url=miniapp_url,
-        )
-
-        if message_id:
-            game_meta["message_id"] = message_id
-            await redis.setex(
-                f"{GROUP_GAME_META_PREFIX}{game_id}",
-                3600,
-                json.dumps(game_meta),
+        try:
+            message_id = await bot_service.send_group_game_invite(
+                chat_id=request.chat_id,
+                initiator_name=game_meta["initiator_name"],
+                game_id=game_id,
+                miniapp_url=miniapp_url,
             )
+
+            if message_id:
+                game_meta["message_id"] = message_id
+                await redis.setex(
+                    f"{GROUP_GAME_META_PREFIX}{game_id}",
+                    3600,
+                    json.dumps(game_meta),
+                )
+        except ValueError as e:
+            # Bot is not a member of the group
+            raise HTTPException(status_code=400, detail=str(e))
 
         return GroupGameInfo(
             game_id=game_id,

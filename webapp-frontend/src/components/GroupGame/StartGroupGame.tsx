@@ -101,10 +101,42 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
 
       webApp?.HapticFeedback?.impactOccurred('medium');
     } catch (e: any) {
-      setError(e.message || 'Failed to start group game');
+      const errorMsg = e.message || e.detail || 'Failed to start group game';
+      // Check if bot is not a member of the group
+      if (errorMsg.toLowerCase().includes('not a member') || 
+          errorMsg.toLowerCase().includes('add the bot')) {
+        setError('⚠️ Bot is not a member of this group. Please add the bot to the group first, then try again.');
+      } else {
+        setError(errorMsg);
+      }
       webApp?.HapticFeedback?.impactOccurred('heavy');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendToGroup = () => {
+    if (!gameInfo) return;
+    
+    // Create a share link that opens Telegram
+    const shareText = `🎮 Join my Poker Game!\n\nGame ID: ${gameInfo.game_id}\n\nTap the button below to join!`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`;
+    
+    // Open Telegram share dialog
+    try {
+      if (webApp?.openTelegramLink) {
+        webApp.openTelegramLink(telegramUrl);
+      } else if (webApp?.openLink) {
+        webApp.openLink(telegramUrl);
+      } else {
+        // Fallback: open in new window
+        window.open(telegramUrl, '_blank');
+      }
+      webApp?.HapticFeedback?.impactOccurred('light');
+    } catch (e) {
+      console.error('Failed to open Telegram link:', e);
+      // Fallback
+      window.open(telegramUrl, '_blank');
     }
   };
 
@@ -149,16 +181,25 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
             </p>
           )}
         </div>
-        <button
-          className="btn-secondary"
-          onClick={() => {
-            setGameInfo(null);
-            setPolling(false);
-            setSelectedChatId(null);
-          }}
-        >
-          Start New Game
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+          <button
+            className="btn-primary"
+            onClick={handleSendToGroup}
+            style={{ width: '100%' }}
+          >
+            📤 Send to Group
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => {
+              setGameInfo(null);
+              setPolling(false);
+              setSelectedChatId(null);
+            }}
+          >
+            Start New Game
+          </button>
+        </div>
       </div>
     );
   }
@@ -170,7 +211,18 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
         Start a poker game in a Telegram group. The bot will send a message with join buttons.
       </p>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message" style={{
+          background: 'var(--error-bg, #fee)',
+          color: 'var(--error, #c00)',
+          padding: '0.75rem',
+          borderRadius: '0.5rem',
+          marginBottom: '1rem',
+          fontSize: '0.9rem',
+        }}>
+          {error}
+        </div>
+      )}
 
       {Array.isArray(chats) && chats.length > 0 ? (
         <div className="chat-selector">
@@ -199,9 +251,14 @@ export const StartGroupGame: React.FC<StartGroupGameProps> = ({ onGameStarted })
             onChange={handleChatIdInput}
             className="chat-id-input"
           />
-          <small>
-            Find the chat ID by adding the bot to your group and checking bot logs, 
-            or use a Telegram chat ID finder bot.
+          <small style={{ 
+            display: 'block', 
+            marginTop: '0.5rem', 
+            color: 'var(--text-dim, #666)', 
+            fontSize: '0.85rem' 
+          }}>
+            💡 Tip: Make sure the bot is added to your group first! 
+            You can find the chat ID by forwarding a message from the group to a chat ID finder bot.
           </small>
         </div>
       )}
