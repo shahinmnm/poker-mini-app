@@ -4573,16 +4573,15 @@ class PokerBotModel:
         meta_key = f"{GROUP_GAME_META_PREFIX}{game_id}"
         players_key = f"{GROUP_GAME_PLAYERS_PREFIX}{game_id}"
 
-        try:
-            # Get game metadata
-            meta_data = self._kv.get(meta_key)
-            if not meta_data:
-                self._logger.warning("Group game %s not found in Redis", game_id)
-                return
+        # Get game metadata
+        meta_data = self._kv.get(meta_key)
+        if not meta_data:
+            self._logger.warning("Group game %s not found in Redis", game_id)
+            return
 
-            if isinstance(meta_data, bytes):
-                meta_data = meta_data.decode("utf-8")
-            game_meta = json.loads(meta_data)
+        if isinstance(meta_data, bytes):
+            meta_data = meta_data.decode("utf-8")
+        game_meta = json.loads(meta_data)
 
             # Get current players
             players_data = self._kv.get(players_key)
@@ -4590,6 +4589,10 @@ class PokerBotModel:
                 if isinstance(players_data, bytes):
                     players_data = players_data.decode("utf-8")
                 players = json.loads(players_data)
+            else:
+                players = []
+            else:
+                players = []
             else:
                 players = []
 
@@ -4611,16 +4614,14 @@ class PokerBotModel:
             # Update group message via bot service (if available) or directly
             message_id = game_meta.get("message_id")
             if message_id:
-                try:
-                    # Try to use bot service from backend (via HTTP if needed)
-                    # For now, update message directly via bot API
-                    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-                    
+                # Try to use bot service from backend (via HTTP if needed)
+                # For now, update message directly via bot API
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup  # pyright: ignore[reportMissingImports]
                     player_count = len(players)
                     min_players = game_meta.get("min_players", 2)
                     
                     player_list = "\n".join(
-                        [f"  • {p.get('name', f'Player {p.get(\"id\", \"?\")}')}" for p in players]
+                        [f"  • {p.get('name', f\"Player {p.get('id', '?')}\")}" for p in players]
                     ) if players else "  (No players yet)"
 
                     status_text = (
