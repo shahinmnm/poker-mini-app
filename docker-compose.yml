@@ -14,7 +14,8 @@ services:
     ports:
       - "127.0.0.1:8443:8443"
     environment:
-      - POKERBOT_TOKEN=${POKERBOT_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - POKERBOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - POKERBOT_REDIS_HOST=redis
       - POKERBOT_PREFERRED_MODE=webhook
       - POKERBOT_WEBHOOK_LISTEN=0.0.0.0
@@ -30,13 +31,15 @@ services:
       context: ./webapp-backend
       dockerfile: Dockerfile
     restart: always
-    ports:
-      - "127.0.0.1:8000:8000"
+    expose:
+      - "8000"
     environment:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - WEBAPP_SECRET=${WEBAPP_SECRET}
-      - TELEGRAM_BOT_TOKEN=${POKERBOT_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - POKERBOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - WEBAPP_PUBLIC_ORIGIN=${WEBAPP_PUBLIC_ORIGIN:-https://poker.shahin8n.sbs}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - PYTHONPATH=/app
     volumes:
@@ -46,16 +49,25 @@ services:
     depends_on:
       - redis
       - bot
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request as u; u.urlopen(\"http://127.0.0.1:8000/health\", timeout=5)' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   webapp-frontend:
     build:
       context: ./webapp-frontend
       dockerfile: Dockerfile
+      args:
+        - WEBAPP_PUBLIC_ORIGIN=${WEBAPP_PUBLIC_ORIGIN:-https://poker.shahin8n.sbs}
     restart: always
     ports:
-      - "127.0.0.1:3000:80"
+      - "80:80"
     depends_on:
-      - webapp-api
+      webapp-api:
+        condition: service_healthy
 
 volumes:
   redis_data:

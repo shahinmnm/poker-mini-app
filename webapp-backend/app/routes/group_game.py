@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.auth import UserContext, require_telegram_user
 from app.dependencies import get_redis_client
 from app.models import User
 from app.services.bot_service import get_bot_service
@@ -28,54 +29,13 @@ GROUP_GAME_META_PREFIX = "group_game_meta:"
 GROUP_GAME_PLAYERS_PREFIX = "group_game_players:"
 
 
-async def get_user_from_request(request: Request) -> User:
-    """
-    Get user from request - supports both session-based and simple identity auth.
-    """
-    # Try session-based auth first (from dependencies)
-    try:
-        from app.dependencies import get_current_user
-        return await get_current_user(request)
-    except Exception:
-        pass
-    
-    # Fallback to simple identity from query/header
-    user_id = request.query_params.get("user_id")
-    if not user_id:
-        # Try to get from X-Telegram-Init-Data header
-        auth_header = request.headers.get("X-Telegram-Init-Data")
-        if auth_header:
-            # Parse initData to get user_id (simplified)
-            try:
-                from urllib.parse import parse_qsl
-                parsed = dict(parse_qsl(auth_header))
-                user_json = parsed.get("user", "{}")
-                import json
-                user_obj = json.loads(user_json)
-                user_id = user_obj.get("id")
-            except Exception:
-                pass
-        
-        # Try Authorization: Bearer <initData>
-        if not user_id:
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.lower().startswith("bearer "):
-                init_data = auth_header.split(" ", 1)[1].strip()
-                if init_data:
-                    try:
-                        from urllib.parse import parse_qsl
-                        parsed = dict(parse_qsl(init_data))
-                        user_json = parsed.get("user", "{}")
-                        import json
-                        user_obj = json.loads(user_json)
-                        user_id = user_obj.get("id")
-                    except Exception:
-                        pass
-    
-    if user_id:
-        return User(id=int(user_id), username=f"Player{user_id}", telegram_id=int(user_id))
-    
-    raise HTTPException(status_code=401, detail="Authentication required")
+async def get_user_from_request(
+    telegram_user: UserContext = Depends(require_telegram_user),
+) -> User:
+    """Resolve a `User` from verified Telegram credentials."""
+
+    username = telegram_user.username or f"Player{telegram_user.id}"
+    return User(id=int(telegram_user.id), username=username, telegram_id=int(telegram_user.id))
 
 
 class StartGroupGameRequest(BaseModel):
