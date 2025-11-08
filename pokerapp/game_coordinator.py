@@ -176,15 +176,13 @@ class GameCoordinator:
         game: Game,
     ) -> Tuple[TurnResult, Optional[Player]]:
         """
-        Process one game turn iteration.
+        Process one game turn iteration using pokerkit.
 
         Returns:
             (TurnResult, next_player_or_None)
         """
         # Sync game state from pokerkit before processing
-        pokerkit_engine = self.engine.get_pokerkit_engine()
-        if pokerkit_engine and pokerkit_engine._state is not None:
-            self.engine.sync_game_from_pokerkit(game, game.players)
+        self.engine.sync_game_from_pokerkit(game, game.players)
         
         result = self.engine.process_turn(game)
 
@@ -199,8 +197,6 @@ class GameCoordinator:
                     user_id=current_player.user_id,
                 )
                 current_player.state = PlayerState.ALL_IN
-
-                # Recursively process next turn since this player cannot act
                 return self.process_game_turn(game)
 
             return result, current_player
@@ -220,9 +216,10 @@ class GameCoordinator:
         return new_state, cards_count
 
     def commit_round_bets(self, game: Game) -> None:
-        """Move current round bets into the pot."""
-
-        self._move_bets_to_pot(game)
+        """Move current round bets into the pot using pokerkit state."""
+        # pokerkit handles pot management automatically
+        # Just sync our game state
+        self.engine.sync_game_from_pokerkit(game, game.players)
 
     def apply_pre_flop_blinds(
         self,
@@ -230,26 +227,10 @@ class GameCoordinator:
         small_blind: int,
         big_blind: Optional[int] = None,
     ) -> None:
-        """Apply small and big blinds at the start of the hand."""
-        
-        # Use pokerkit if available - blinds are handled automatically
-        pokerkit_engine = self.engine.get_pokerkit_engine()
-        if pokerkit_engine and pokerkit_engine._state is not None:
-            # pokerkit already applied blinds during initialization
-            # Just sync the game state
-            self.engine.sync_game_from_pokerkit(game, game.players)
-            return
-
-        # Legacy implementation
-        if len(game.players) < 2:
-            return
-
-        big_blind_amount = (
-            big_blind if big_blind is not None else small_blind * 2
-        )
-
-        self.player_raise_bet(game, game.players[0], small_blind)
-        self.player_raise_bet(game, game.players[1], big_blind_amount)
+        """Apply small and big blinds - pokerkit handles this automatically."""
+        # pokerkit already applied blinds during initialization
+        # Just sync the game state
+        self.engine.sync_game_from_pokerkit(game, game.players)
 
     def player_raise_bet(
         self,
@@ -257,133 +238,87 @@ class GameCoordinator:
         player: Player,
         amount: int,
     ) -> Money:
-        """Handle raise/bet action for a player."""
-        
-        # Use pokerkit if available
+        """Handle raise/bet action using pokerkit."""
         pokerkit_engine = self.engine.get_pokerkit_engine()
-        if pokerkit_engine and pokerkit_engine._state is not None:
-            # Calculate total bet amount (not increment)
-            call_amount = max(game.max_round_rate - player.round_rate, 0)
-            total_bet = game.max_round_rate + max(amount - game.max_round_rate, 0)
-            
-            # Use pokerkit for the action
-            amount_committed = pokerkit_engine.player_action_bet_or_raise(total_bet)
-            
-            # Update player wallet and round rate
-            player.wallet.authorize(game_id=game.id, amount=amount_committed)
-            player.round_rate += amount_committed
-            
-            # Sync game state from pokerkit
-            self.engine.sync_game_from_pokerkit(game, game.players)
-            
-            return amount_committed
-
-        # Legacy implementation
+        
+        # Calculate total bet amount (not increment)
         call_amount = max(game.max_round_rate - player.round_rate, 0)
-        raise_increment = max(amount - game.max_round_rate, 0)
-        total_needed = call_amount + raise_increment
-
-        log_helper.debug(
-            "CoordinatorRaise",
-            "Player raising action",
-            user_id=player.user_id,
-            call_amount=call_amount,
-            raise_increment=raise_increment,
-            total_needed=total_needed,
-        )
-
-        if total_needed <= 0:
-            return 0
-
-        player.wallet.authorize(
-            game_id=game.id,
-            amount=total_needed,
-        )
-        player.round_rate += total_needed
-
-        if player.round_rate > game.max_round_rate:
-            game.max_round_rate = player.round_rate
-            game.trading_end_user_id = player.user_id
-
-        return total_needed
+        total_bet = game.max_round_rate + max(amount - game.max_round_rate, 0)
+        
+        # Use pokerkit for the action
+        amount_committed = pokerkit_engine.player_action_bet_or_raise(total_bet)
+        
+        # Update player wallet and round rate
+        player.wallet.authorize(game_id=game.id, amount=amount_committed)
+        player.round_rate += amount_committed
+        
+        # Sync game state from pokerkit
+        self.engine.sync_game_from_pokerkit(game, game.players)
+        
+        return amount_committed
 
     def player_call_or_check(self, game: Game, player: Player) -> Money:
-        """Handle call/check action for a player."""
-        
-        # Use pokerkit if available
+        """Handle call/check action using pokerkit."""
         pokerkit_engine = self.engine.get_pokerkit_engine()
-        if pokerkit_engine and pokerkit_engine._state is not None:
-            # Use pokerkit for the action
-            amount_committed = pokerkit_engine.player_action_check_or_call()
-            
-            # Update player wallet and round rate
-            player.wallet.authorize(game_id=game.id, amount=amount_committed)
-            player.round_rate += amount_committed
-            
-            # Sync game state from pokerkit
-            self.engine.sync_game_from_pokerkit(game, game.players)
-            
-            return amount_committed
-
-        # Legacy implementation
-        amount = game.max_round_rate - player.round_rate
-
-        player.wallet.authorize(
-            game_id=game.id,
-            amount=amount,
-        )
-        player.round_rate += amount
-
-        return amount
+        
+        # Use pokerkit for the action
+        amount_committed = pokerkit_engine.player_action_check_or_call()
+        
+        # Update player wallet and round rate
+        player.wallet.authorize(game_id=game.id, amount=amount_committed)
+        player.round_rate += amount_committed
+        
+        # Sync game state from pokerkit
+        self.engine.sync_game_from_pokerkit(game, game.players)
+        
+        return amount_committed
 
     def player_fold(self, game: Game, player: Player) -> None:
-        """Handle fold action for a player."""
-        
-        # Use pokerkit if available
+        """Handle fold action using pokerkit."""
         pokerkit_engine = self.engine.get_pokerkit_engine()
-        if pokerkit_engine and pokerkit_engine._state is not None:
-            # Use pokerkit for the action
-            pokerkit_engine.player_action_fold()
-            player.state = PlayerState.FOLD
-            
-            # Sync game state from pokerkit
-            self.engine.sync_game_from_pokerkit(game, game.players)
-            return
         
-        # Legacy implementation
+        # Use pokerkit for the action
+        pokerkit_engine.player_action_fold()
         player.state = PlayerState.FOLD
+        
+        # Sync game state from pokerkit
+        self.engine.sync_game_from_pokerkit(game, game.players)
 
     def player_all_in(self, game: Game, player: Player) -> Money:
-        """Handle all-in action for a player."""
-
-        amount = player.wallet.authorize_all(
-            game_id=game.id,
-        )
-        player.round_rate += amount
-
-        if game.max_round_rate < player.round_rate:
-            game.max_round_rate = player.round_rate
-            game.trading_end_user_id = player.user_id
-
-        return amount
+        """Handle all-in action using pokerkit."""
+        pokerkit_engine = self.engine.get_pokerkit_engine()
+        
+        # Get all-in amount
+        all_in_amount = player.wallet.authorize_all(game_id=game.id)
+        
+        # Use pokerkit for the action
+        amount_committed = pokerkit_engine.player_action_bet_or_raise(all_in_amount)
+        
+        # Update player state and round rate
+        player.state = PlayerState.ALL_IN
+        player.round_rate += amount_committed
+        
+        # Sync game state from pokerkit
+        self.engine.sync_game_from_pokerkit(game, game.players)
+        
+        return amount_committed
 
     def finish_game_with_winners(self, game: Game):
         """
-        Calculate winners and distribute pots using side pot logic.
-        REPLACES old RoundRateModel.finish_rate()
+        Calculate winners and distribute pots using pokerkit state and side pot logic.
 
         Returns:
             List of (player, winning_hand, money_won)
         """
-        # Move all round bets to pot
-        self._move_bets_to_pot(game)
+        # Sync final state from pokerkit
+        self.engine.sync_game_from_pokerkit(game, game.players)
 
         # Get active players for winner determination
         active_players = game.players_by(
             states=(PlayerState.ACTIVE, PlayerState.ALL_IN)
         )
 
-        # Determine hand rankings
+        # Determine hand rankings using pokerkit
         player_scores = self.winner_determine.determinate_scores(
             players=active_players,
             cards_table=game.cards_table,
@@ -455,20 +390,6 @@ class GameCoordinator:
                 exc,
             )
 
-    def _move_bets_to_pot(self, game: Game) -> None:
-        """Move all round bets to main pot (replaces RoundRateModel.to_pot)"""
-        for player in game.players:
-            game.pot += player.round_rate
-            player.round_rate = 0
-
-        game.max_round_rate = 0
-
-        if game.players:
-            dealer_index = game.dealer_index % len(game.players)
-            dealer_player = game.players[dealer_index]
-            game.trading_end_user_id = dealer_player.user_id
-        else:
-            game.trading_end_user_id = 0
 
     def _format_action_text(
         self,

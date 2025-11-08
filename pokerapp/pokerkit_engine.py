@@ -273,21 +273,11 @@ class PokerKitEngine:
             return TurnResult.END_GAME
         
         # Check if betting round is complete using pokerkit
-        try:
-            acting_statuses = self._state.acting_statuses
-            if acting_statuses and not any(acting_statuses):
-                # No one is acting - betting round is complete
-                logger.info("Betting round complete → END_ROUND")
-                return TurnResult.END_ROUND
-        except AttributeError:
-            # Fallback: check if all bets are matched
-            active_players = [p for p in players if p.state == PlayerState.ACTIVE]
-            if active_players and game.max_round_rate > 0:
-                all_matched = all(
-                    p.round_rate == game.max_round_rate for p in active_players
-                )
-                if all_matched:
-                    return TurnResult.END_ROUND
+        acting_statuses = self._state.acting_statuses
+        if acting_statuses and not any(acting_statuses):
+            # No one is acting - betting round is complete
+            logger.info("Betting round complete → END_ROUND")
+            return TurnResult.END_ROUND
         
         # Check if there's a current player to act
         current_player = self.get_current_player(players)
