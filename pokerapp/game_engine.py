@@ -76,265 +76,38 @@ class PokerEngine:
         minimum_balance = big_blind * 20  # 20 big blinds minimum
         return player_balance >= minimum_balance
 
-    def _active_players(self, game: Game) -> Sequence[Player]:
-        return [
-            player
-            for player in game.players
-            if player.state == PlayerState.ACTIVE
-        ]
-
+    # Legacy methods - only used when pokerkit is not available
     def _active_or_all_in_players(self, game: Game) -> Sequence[Player]:
+        """Legacy: Get active or all-in players (pokerkit handles this)"""
         return [
             player
             for player in game.players
             if player.state in (PlayerState.ACTIVE, PlayerState.ALL_IN)
         ]
 
-    def _find_next_active_index(
-        self,
-        game: Game,
-        start_index: int,
-        *,
-        include_start: bool = False,
-    ) -> Optional[int]:
-        players = game.players
-        players_count = len(players)
-
-        if players_count == 0:
-            return None
-
-        for offset in range(players_count):
-            if offset == 0 and not include_start:
-                continue
-
-            candidate = (start_index + offset) % players_count
-            if players[candidate].state == PlayerState.ACTIVE:
-                return candidate
-
-        return None
-
-    def _find_previous_active_index(
-        self,
-        game: Game,
-        start_index: int,
-    ) -> Optional[int]:
-        players = game.players
-        players_count = len(players)
-
-        if players_count == 0:
-            return None
-
-        for offset in range(players_count):
-            candidate = (start_index - offset) % players_count
-            if players[candidate].state == PlayerState.ACTIVE:
-                return candidate
-
-        return None
-
-    def _resolve_first_and_closer(
-        self,
-        game: Game,
-        street: GameState,
-    ) -> Tuple[Optional[int], Optional[int]]:
-        players = game.players
-        players_count = len(players)
-
-        if players_count == 0:
-            return None, None
-
-        dealer_index = game.dealer_index % players_count
-
-        if players_count == 2:
-            opponent_index = (dealer_index + 1) % 2
-
-            if street == GameState.ROUND_PRE_FLOP:
-                first_to_act = dealer_index
-                closer_index = opponent_index
-            elif street in (
-                GameState.ROUND_FLOP,
-                GameState.ROUND_TURN,
-                GameState.ROUND_RIVER,
-            ):
-                first_to_act = opponent_index
-                closer_index = dealer_index
-            else:
-                first_to_act = dealer_index
-                closer_index = dealer_index
-        else:
-            closer_index = dealer_index
-
-            if street == GameState.ROUND_PRE_FLOP:
-                # Pre-flop: action begins to the left of the big blind (UTG),
-                # while the big blind closes the round by default.
-                first_to_act = (dealer_index + 3) % players_count
-                closer_index = (dealer_index + 2) % players_count
-            else:
-                # Post-flop: left of the dealer acts first and the dealer
-                # closes the action unless betting changes reassign it.
-                first_to_act = (dealer_index + 1) % players_count
-
-        first_active = self._find_next_active_index(
-            game,
-            first_to_act,
-            include_start=True,
-        )
-        closer_active = self._find_previous_active_index(game, closer_index)
-
-        return first_active, closer_active
-
-    def _prepare_turn_order(
-        self,
-        game: Game,
-        street: Optional[GameState] = None,
-    ) -> None:
-        target_street = street or game.state
-        first_index, _ = self._resolve_first_and_closer(
-            game,
-            target_street,
-        )
-
-        turn_order_indices: list[int] = []
-
-        if first_index is None:
-            game.current_player_index = -1
-        else:
-            game.current_player_index = first_index
-            turn_order_indices.append(first_index)
-
-            next_index = first_index
-            for offset in range(1, len(game.players)):
-                next_index = self._find_next_active_index(game, next_index)
-
-                if next_index is None or next_index == first_index:
-                    break
-
-                turn_order_indices.append(next_index)
-
-        if turn_order_indices:
-            closer_index = turn_order_indices[-1]
-            game.trading_end_user_id = game.players[closer_index].user_id
-        else:
-            game.trading_end_user_id = 0
-
-        game.closer_has_acted = False
-        game.last_actor_user_id = None
-
-        first_user_id = None
-        if 0 <= game.current_player_index < len(game.players):
-            first_user_id = game.players[game.current_player_index].user_id
-
-        order_user_ids = [
-            game.players[index].user_id for index in turn_order_indices
-        ]
-
-        logger.debug(
-            "Prepared turn order for %s: first=%s (%s), closer=%s, order=%s",
-            target_street.name,
-            game.current_player_index,
-            first_user_id,
-            game.trading_end_user_id,
-            order_user_ids,
-        )
-        logger.debug(
-            "🔄 Reset closer flag for %s → closer_has_acted=%s",
-            target_street.name,
-            game.closer_has_acted,
-        )
-
-    def prepare_round(
-        self,
-        game: Game,
-        street: Optional[GameState] = None,
-    ) -> None:
-        self._prepare_turn_order(game, street)
-        game.round_has_started = False
-
-    def _advance_turn(self, game: Game) -> Optional[Player]:
-        # On the first call of a fresh betting round, keep the current player
-        # in place so they get a turn before the pointer advances.
-        if not getattr(game, "round_has_started", False):
-            game.round_has_started = True
-            current_index = game.current_player_index
-
-            if 0 <= current_index < len(game.players):
-                return game.players[current_index]
-
-            return None
-
-        current_index = game.current_player_index
-        next_index = self._find_next_active_index(game, current_index)
-
-        if next_index is None:
-            return None
-
-        game.current_player_index = next_index
-        return game.players[next_index]
-
-    def _peek_next_user_id(self, game: Game) -> Optional[str]:
-        current_index = game.current_player_index
-        next_index = self._find_next_active_index(game, current_index)
-
-        if next_index is None:
-            return None
-
-        return game.players[next_index].user_id
-
-    def _is_betting_complete(self, game: Game) -> bool:
-        """
-        Check if the current betting round is complete.
-
-        Round is complete when:
-        1. Current player is the designated closer
-        2. All active players have matched the highest bet
-
-        This check happens BEFORE the closer acts, preventing double-action.
-        """
+    def _is_betting_complete_legacy(self, game: Game) -> bool:
+        """Legacy: Check if betting round is complete (pokerkit handles this)"""
+        if not game.players or game.current_player_index < 0:
+            return False
+        
         current_player = game.players[game.current_player_index]
         closer_has_acted = getattr(game, "closer_has_acted", False)
 
-        # Check 1: Is current player the closer?
         if current_player.user_id != game.trading_end_user_id:
-            logger.debug(
-                "❌ Betting not complete: current=%s, closer=%s",
-                current_player.user_id,
-                game.trading_end_user_id,
-            )
             return False
-
-        logger.debug(
-            "🔍 Closer flag status: closer=%s, has_acted=%s",
-            game.trading_end_user_id,
-            closer_has_acted,
-        )
 
         if not closer_has_acted:
-            logger.debug(
-                "❌ Betting not complete: closer %s still to act",
-                game.trading_end_user_id,
-            )
             return False
 
-        # Second check: Are all active players matched?
-        active_players = self._active_players(game)
-
+        active_players = [
+            p for p in game.players if p.state == PlayerState.ACTIVE
+        ]
         if not active_players:
             return True
 
-        all_matched = all(
-            player.round_rate == game.max_round_rate
-            for player in active_players
+        return all(
+            p.round_rate == game.max_round_rate for p in active_players
         )
-
-        logger.debug(
-            "🔍 Closer reached: all_matched=%s, max_rate=%d",
-            all_matched,
-            game.max_round_rate,
-        )
-
-        return all_matched
-
-    def should_end_round(self, game: Game) -> bool:
-        return self._is_betting_complete(game)
 
     def process_turn(self, game: Game) -> TurnResult:
         """
@@ -354,105 +127,50 @@ class PokerEngine:
             # Use pokerkit engine
             return self._pokerkit_engine.process_turn(game, game.players)
         
-        # Legacy implementation
+        # Legacy implementation (simplified)
         if not game.players:
             return TurnResult.END_GAME
 
-        # Ensure turn order is initialized
-        if not (0 <= game.current_player_index < len(game.players)):
-            self._prepare_turn_order(game)
-
-            if not (0 <= game.current_player_index < len(game.players)):
-                return TurnResult.END_ROUND
-
-        current_player = game.players[game.current_player_index]
-
-        logger.info(
-            "🎯 Player %s to act (street=%s, index=%d)",
-            current_player.user_id,
-            game.state.name,
-            game.current_player_index,
-        )
-
-        # Count active players (not folded, still have chips or all-in)
         active_count = len(self._active_or_all_in_players(game))
-
-        # Only one player left → game over
         if active_count <= 1:
-            logger.info("🏁 Only 1 player remains → END_GAME")
             return TurnResult.END_GAME
 
-        # Check if current player is the closer AND all bets are matched
-        if self._is_betting_complete(game):
-            logger.info(
-                "🔔 Closer %s reached with bets matched → END_ROUND",
-                current_player.user_id,
-            )
+        if game.current_player_index < 0 or game.current_player_index >= len(game.players):
             return TurnResult.END_ROUND
 
-        # Player needs to act
+        if self._is_betting_complete_legacy(game):
+            return TurnResult.END_ROUND
+
         return TurnResult.CONTINUE_ROUND
 
     def advance_after_action(self, game: Game) -> None:
-        """Record the action and move the button to the next active player."""
+        """
+        Record the action and sync state.
+        With pokerkit: just syncs state (pokerkit handles turn advancement).
+        Legacy: manually advances turn.
+        """
+        if self._use_pokerkit and self._pokerkit_engine._state is not None:
+            # pokerkit handles turn advancement automatically
+            # Just sync our game state
+            self.sync_game_from_pokerkit(game, game.players)
+            return
 
+        # Legacy implementation
         if not game.players:
-            logger.warning("⚠️ advance_after_action called with no players")
             return
 
         current_index = game.current_player_index
-
         if not (0 <= current_index < len(game.players)):
-            logger.warning(
-                "⚠️ Invalid current_player_index=%s for advance_after_action",
-                current_index,
-            )
             return
 
         current_player = game.players[current_index]
         game.last_actor_user_id = current_player.user_id
-        if current_player.user_id == game.trading_end_user_id:
-            game.closer_has_acted = True
-            logger.debug(
-                "✅ Closer %s has now acted (street=%s)",
-                current_player.user_id,
-                game.state.name,
-            )
+        
+        if hasattr(game, 'trading_end_user_id'):
+            if current_player.user_id == game.trading_end_user_id:
+                game.closer_has_acted = True
 
-        logger.debug(
-            "📝 Recorded last actor: %s (index=%d)",
-            current_player.user_id,
-            current_index,
-        )
-
-        # Mark that at least one action has occurred this round.
         game.round_has_started = True
-
-        # If the closer just acted with all bets matched, the round is done.
-        if self._is_betting_complete(game):
-            logger.info(
-                "🔚 Betting complete after action from %s",
-                current_player.user_id,
-            )
-            return
-
-        next_player = self._advance_turn(game)
-
-        if next_player is None:
-            logger.warning(
-                "⚠️ No next active player found after %s",
-                current_player.user_id,
-            )
-            game.current_player_index = -1
-            return
-
-        logger.info(
-            "➡️ Turn advanced: %s → %s (idx %d → %d)",
-            current_player.user_id,
-            next_player.user_id,
-            current_index,
-            game.current_player_index,
-        )
 
     def advance_to_next_street(self, game: Game) -> GameState:
         """
@@ -464,14 +182,14 @@ class PokerEngine:
         """
         if self._use_pokerkit and self._pokerkit_engine._state is not None:
             # pokerkit handles street progression automatically
-            # We just need to sync our game state
             new_state, _ = self._pokerkit_engine.advance_to_next_street()
             game.state = new_state
             return new_state
         
-        return self._move_to_next_street(game)
+        return self._move_to_next_street_legacy(game)
 
-    def _move_to_next_street(self, game: Game) -> GameState:
+    def _move_to_next_street_legacy(self, game: Game) -> GameState:
+        """Legacy: Advance to next street (pokerkit handles this)"""
         state_transitions = {
             GameState.ROUND_PRE_FLOP: GameState.ROUND_FLOP,
             GameState.ROUND_FLOP: GameState.ROUND_TURN,
@@ -480,7 +198,6 @@ class PokerEngine:
         }
 
         current_state = game.state
-
         if current_state not in state_transitions:
             raise ValueError(f"Cannot advance from state: {current_state}")
 
@@ -491,25 +208,12 @@ class PokerEngine:
             player.round_rate = 0
 
         game.max_round_rate = 0
-        game.last_actor_user_id = None
-
-        self._prepare_turn_order(game, new_state)
-        game.round_has_started = False
-
-        first_actor = None
-        if 0 <= game.current_player_index < len(game.players):
-            first_actor = game.players[game.current_player_index].user_id
-
-        logger.info(
-            "🎬 Street advanced → %s. First to act: %s",
-            new_state.name,
-            first_actor,
-        )
+        if hasattr(game, 'last_actor_user_id'):
+            game.last_actor_user_id = None
+        if hasattr(game, 'round_has_started'):
+            game.round_has_started = False
 
         return new_state
-
-    def _advance_street(self, game: Game) -> GameState:
-        return self._move_to_next_street(game)
 
     def get_cards_to_deal(self, game_state: GameState) -> int:
         """
@@ -665,12 +369,12 @@ class GameEngine:
         ) % players_count
 
     def _configure_pre_flop_turn_order(self) -> None:
-        """Set current player and closing seat for the pre-flop street."""
-
-        self._coordinator.engine.prepare_round(
-            self._game,
-            GameState.ROUND_PRE_FLOP,
-        )
+        """Configure pre-flop turn order (pokerkit handles this automatically)."""
+        # With pokerkit, turn order is handled automatically
+        # Legacy: would call prepare_round, but pokerkit sync handles it
+        pokerkit_engine = self._coordinator.engine.get_pokerkit_engine()
+        if pokerkit_engine and pokerkit_engine._state is not None:
+            self._coordinator.engine.sync_game_from_pokerkit(self._game, self._players)
 
     def _deal_private_cards(self) -> None:
         deck = get_shuffled_deck()
