@@ -1,14 +1,13 @@
-from fastapi import APIRouter
-from app.redis_client import get_redis_client
+from fastapi import APIRouter, Depends
+from app.dependencies import get_redis_client
 
 router = APIRouter(tags=["health"])
 
 @router.get("/health")
-async def health_check():
+async def health_check(redis_client=Depends(get_redis_client)):
     """Check API and Redis health."""
     try:
-        redis_client = get_redis_client()
-        redis_client.ping()
+        await redis_client.ping()
         redis_status = "ok"
     except Exception as e:
         redis_status = f"error: {str(e)}"

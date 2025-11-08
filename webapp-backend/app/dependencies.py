@@ -25,12 +25,34 @@ async def get_redis_client() -> RedisClient:
     """Return a singleton Redis client instance."""
     global _session_client
     if _session_client is None:
-        _session_client = redis.Redis(
-            host=get_env_str("REDIS_HOST", "redis"),
-            port=get_env_int("REDIS_PORT", 6379),
-            db=get_env_int("REDIS_DB", 0),
-            decode_responses=False,
-        )
+        try:
+            _session_client = redis.Redis(
+                host=get_env_str("REDIS_HOST", "redis"),
+                port=get_env_int("REDIS_PORT", 6379),
+                db=get_env_int("REDIS_DB", 0),
+                decode_responses=False,
+                socket_connect_timeout=5,
+                socket_keepalive=True,
+                retry_on_timeout=True,
+                health_check_interval=30,
+            )
+            # Test connection
+            await _session_client.ping()
+        except Exception as e:
+            import logging
+            log = logging.getLogger("app.dependencies")
+            log.warning("⚠️ Redis connection failed: %s. Will retry on first use.", e)
+            # Create client anyway - it will retry on first use
+            _session_client = redis.Redis(
+                host=get_env_str("REDIS_HOST", "redis"),
+                port=get_env_int("REDIS_PORT", 6379),
+                db=get_env_int("REDIS_DB", 0),
+                decode_responses=False,
+                socket_connect_timeout=5,
+                socket_keepalive=True,
+                retry_on_timeout=True,
+                health_check_interval=30,
+            )
     return _session_client
 
 
