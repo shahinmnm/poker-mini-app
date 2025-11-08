@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Betting round management and pot calculation.
+Betting round management and pot calculation using pokerkit.
 Handles side pots for complex all-in scenarios.
 """
 
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from pokerapp.entities import Game, Money, Player, Score
 from pokerapp.cards import Cards
 
@@ -26,15 +26,65 @@ class SidePot:
 
 class SidePotCalculator:
     """
-    Calculate side pots for unequal all-in amounts.
+    Calculate side pots using pokerkit's pot management when available,
+    with fallback to manual calculation for compatibility.
     """
 
-    def calculate_side_pots(self, game: Game) -> List[SidePot]:
+    def calculate_side_pots(
+        self,
+        game: Game,
+        pokerkit_state: Optional[object] = None,
+    ) -> List[SidePot]:
         """
         Create side pots based on player contributions.
+        Uses pokerkit's pot information if available.
+
+        Args:
+            game: Game entity
+            pokerkit_state: Optional pokerkit State object
 
         Returns:
             List of SidePot objects ordered from main → side → side...
+        """
+        # If pokerkit state is available, use its pot information
+        if pokerkit_state and hasattr(pokerkit_state, 'pots'):
+            return self._calculate_from_pokerkit(game, pokerkit_state)
+
+        # Fallback to manual calculation
+        return self._calculate_manually(game)
+
+    def _calculate_from_pokerkit(
+        self,
+        game: Game,
+        pokerkit_state: object,
+    ) -> List[SidePot]:
+        """Calculate side pots from pokerkit State."""
+        side_pots = []
+        
+        for pot in pokerkit_state.pots:
+            # Get eligible player indices from pokerkit pot
+            eligible_indices = pot.player_indices
+            
+            # Map to our Player objects
+            eligible_players = [
+                game.players[i]
+                for i in eligible_indices
+                if i < len(game.players)
+            ]
+            
+            if eligible_players:
+                side_pot = SidePot(
+                    amount=pot.amount,
+                    eligible_players=eligible_players,
+                )
+                side_pots.append(side_pot)
+        
+        return side_pots
+
+    def _calculate_manually(self, game: Game) -> List[SidePot]:
+        """
+        Manual side pot calculation (fallback).
+        Create side pots based on player contributions.
         """
         # Get all players with money in pot (authorized amounts)
         player_contributions = []
@@ -72,14 +122,17 @@ class SidePotCalculator:
     def distribute_pots(
         self,
         side_pots: List[SidePot],
-        player_scores: Dict[Score, List[Tuple[Player, Cards]]]
+        player_scores: Dict[Score, List[Tuple[Player, Cards]]],
+        pokerkit_state: Optional[object] = None,
     ) -> List[Tuple[Player, Cards, Money]]:
         """
         Distribute each side pot to winners.
+        Uses pokerkit's chip pushing if available.
 
         Args:
             side_pots: Side pots from main to highest
             player_scores: Winner rankings by hand strength
+            pokerkit_state: Optional pokerkit State object
 
         Returns:
             List of (player, winning_hand, amount_won)
