@@ -1,49 +1,107 @@
 #!/usr/bin/env python3
 
 import unittest
+from dataclasses import dataclass
+from typing import List
 
-from typing import Tuple
-
-from pokerapp.cards import Cards, Card
-from pokerapp.winnerdetermination import WinnerDetermination
-
-
-HANDS_FILE = "./tests/hands.txt"
+from pokerapp.cards import Card
+from pokerapp.winnerdetermination import (
+    WinnerDetermination,
+    get_combination_name,
+)
 
 
-class TestWinnerDetermination(unittest.TestCase):
-    @classmethod
-    def _parse_hands(cls, line: str) -> Tuple[Cards]:
-        """ The first hand is the best """
+@dataclass
+class StubPlayer:
+    user_id: int
+    cards: List[Card]
 
-        line_toks = line.split()
 
-        first_hand = cls._parse_hand(line_toks[0])
-        second_hand = cls._parse_hand(line_toks[1])
+class WinnerDeterminationTests(unittest.TestCase):
+    def test_detects_straight_flush_winner(self) -> None:
+        board = [
+            Card("10♠"),
+            Card("J♠"),
+            Card("K♠"),
+            Card("2♣"),
+            Card("9♠"),
+        ]
 
-        if line_toks[2] == "2":
-            return (second_hand, first_hand)
-
-        return (first_hand, second_hand)
-
-    @staticmethod
-    def _parse_hand(hand: str) -> Cards:
-        return [Card(c) for c in hand.split("'")]
-
-    def test_determine_best_hand(self):
-        """
-        Test calculation of the best hand
-        """
-
-        with open(HANDS_FILE, "r") as f:
-            game_lines = f.readlines()
+        player_one = StubPlayer(
+            user_id=1,
+            cards=[Card("A♠"), Card("Q♠")],
+        )
+        player_two = StubPlayer(
+            user_id=2,
+            cards=[Card("A♦"), Card("K♦")],
+        )
 
         determinator = WinnerDetermination()
-        for ln in game_lines:
-            hands = TestWinnerDetermination._parse_hands(ln)
-            got_best_hand = determinator._best_hand_score(hands)[0]
-            self.assertListEqual(list1=got_best_hand, list2=hands[0])
+        results = determinator.determinate_scores(
+            [player_one, player_two],
+            board,
+        )
+
+        winning_score = max(results.keys())
+        winners = results[winning_score]
+
+        self.assertEqual(len(winners), 1)
+        self.assertIs(winners[0][0], player_one)
+        self.assertEqual(
+            get_combination_name(winning_score),
+            "Straight flush",
+        )
+
+    def test_split_pot_when_hands_match(self) -> None:
+        board = [
+            Card("A♣"),
+            Card("K♦"),
+            Card("Q♥"),
+            Card("J♣"),
+            Card("10♠"),
+        ]
+
+        player_one = StubPlayer(1, [Card("9♠"), Card("2♦")])
+        player_two = StubPlayer(2, [Card("9♣"), Card("3♣")])
+
+        determinator = WinnerDetermination()
+        results = determinator.determinate_scores(
+            [player_one, player_two],
+            board,
+        )
+
+        # All players should share the same straight.
+        self.assertEqual(len(results), 1)
+        winners = next(iter(results.values()))
+        self.assertEqual({winner[0].user_id for winner in winners}, {1, 2})
+        score = next(iter(results))
+        self.assertEqual(get_combination_name(score), "Straight")
+
+    def test_handles_kicker_strength(self) -> None:
+        board = [
+            Card("A♠"),
+            Card("A♥"),
+            Card("K♣"),
+            Card("7♦"),
+            Card("4♣"),
+        ]
+
+        better_pair = StubPlayer(1, [Card("Q♠"), Card("10♦")])
+        weaker_pair = StubPlayer(2, [Card("J♠"), Card("10♣")])
+
+        determinator = WinnerDetermination()
+        results = determinator.determinate_scores(
+            [better_pair, weaker_pair],
+            board,
+        )
+
+        winning_score = max(results.keys())
+        winners = results[winning_score]
+
+        self.assertEqual(len(winners), 1)
+        self.assertIs(winners[0][0], better_pair)
+        self.assertEqual(get_combination_name(winning_score), "One pair")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()

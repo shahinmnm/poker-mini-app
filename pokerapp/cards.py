@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import random
 from typing import List
 
+from pokerapp.pokerkit_adapter import generate_shuffled_unicode_deck
 
 class Card(str):
     @property
@@ -30,23 +30,7 @@ Cards = List[Card]
 
 
 def get_cards() -> Cards:
-    cards = [
-        Card("2♥"), Card("3♥"), Card("4♥"), Card("5♥"),
-        Card("6♥"), Card("7♥"), Card("8♥"), Card("9♥"),
-        Card("10♥"), Card("J♥"), Card("Q♥"), Card("K♥"),
-        Card("A♥"), Card("2♦"), Card("3♦"), Card("4♦"),
-        Card("5♦"), Card("6♦"), Card("7♦"), Card("8♦"),
-        Card("9♦"), Card("10♦"), Card("J♦"), Card("Q♦"),
-        Card("K♦"), Card("A♦"), Card("2♣"), Card("3♣"),
-        Card("4♣"), Card("5♣"), Card("6♣"), Card("7♣"),
-        Card("8♣"), Card("9♣"), Card("10♣"), Card("J♣"),
-        Card("Q♣"), Card("K♣"), Card("A♣"), Card("2♠"),
-        Card("3♠"), Card("4♠"), Card("5♠"), Card("6♠"),
-        Card("7♠"), Card("8♠"), Card("9♠"), Card("10♠"),
-        Card("J♠"), Card("Q♠"), Card("K♠"), Card("A♠"),
-    ]
-    random.SystemRandom().shuffle(cards)
-    return cards
+    return [Card(text) for text in generate_shuffled_unicode_deck()]
 
 
 def get_shuffled_deck() -> Cards:
