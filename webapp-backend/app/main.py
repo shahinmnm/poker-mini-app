@@ -46,11 +46,6 @@ MOCK_TABLES = [
 # ---- Core router (mounted at / and /api) ----
 router = APIRouter()
 
-@router.get("/health")
-def health() -> Dict[str, Any]:
-    from datetime import datetime, timezone
-    return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
-
 @router.get("/tables")
 def list_tables() -> Dict[str, Any]:
     return {"tables": MOCK_TABLES}
@@ -97,6 +92,15 @@ def exchange_token(user: UserContext = Depends(require_telegram_user)) -> Dict[s
 # Mount once at / and once at /api (so both work)
 app.include_router(router)
 app.include_router(router, prefix="/api")
+
+# Include health routes (mounted at both / and /api)
+try:
+    from app.routes import health
+    app.include_router(health.router)
+    app.include_router(health.router, prefix="/api")
+    log.info("✅ Health routes registered")
+except Exception as e:
+    log.warning("⚠️ Could not load health routes: %s", e)
 
 # Include group game routes
 try:
