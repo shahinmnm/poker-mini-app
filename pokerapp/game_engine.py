@@ -2,6 +2,8 @@
 """
 Pure poker game engine - no Telegram/UI dependencies.
 Handles state transitions, player turns, and game flow.
+
+Refactored to use pokerkit State as the source of truth.
 """
 
 import logging
@@ -15,6 +17,15 @@ from pokerapp.cards import get_shuffled_deck
 from pokerapp.entities import Game, GameMode, GameState, Player, PlayerState
 from pokerapp.kvstore import ensure_kv
 
+# Try to use pokerkit engine, fall back to legacy if not available
+try:
+    from pokerapp.pokerkit_engine import PokerKitEngine, TurnResult
+    POKERKIT_ENGINE_AVAILABLE = True
+except ImportError:
+    POKERKIT_ENGINE_AVAILABLE = False
+    PokerKitEngine = None
+    TurnResult = Enum('TurnResult', ['CONTINUE_ROUND', 'END_ROUND', 'END_GAME'])
+
 # NOTE: GameCoordinator is imported lazily in GameEngine to avoid a circular
 # import during module initialisation.  The coordinator itself depends on the
 # pure "PokerEngine" defined in this module.
@@ -22,21 +33,23 @@ from pokerapp.kvstore import ensure_kv
 logger = logging.getLogger(__name__)
 
 
-class TurnResult(Enum):
-    """Result of processing a player turn"""
-    CONTINUE_ROUND = "continue_round"
-    END_ROUND = "end_round"
-    END_GAME = "end_game"
-
-
 class PokerEngine:
     """
     Mode-agnostic poker engine.
-    Handles game flow without knowledge of Telegram/UI layer.
+    Uses pokerkit State as the source of truth for game logic.
+    Falls back to legacy implementation if pokerkit is not available.
     """
 
     def __init__(self):
-        pass
+        if POKERKIT_ENGINE_AVAILABLE:
+            self._pokerkit_engine = PokerKitEngine()
+            self._use_pokerkit = True
+        else:
+            self._pokerkit_engine = None
+            self._use_pokerkit = False
+            logger.warning(
+                "pokerkit not available, using legacy game engine implementation"
+            )
 
     def validate_join_balance(
         self,
@@ -54,6 +67,11 @@ class PokerEngine:
         Returns:
             True if player can afford to play
         """
+        if self._use_pokerkit:
+            return self._pokerkit_engine.validate_join_balance(
+                player_balance, table_stake
+            )
+        
         big_blind = table_stake * 2
         minimum_balance = big_blind * 20  # 20 big blinds minimum
         return player_balance >= minimum_balance
@@ -332,6 +350,11 @@ class PokerEngine:
         Returns:
             TurnResult indicating next state
         """
+        if self._use_pokerkit and self._pokerkit_engine._state is not None:
+            # Use pokerkit engine
+            return self._pokerkit_engine.process_turn(game, game.players)
+        
+        # Legacy implementation
         if not game.players:
             return TurnResult.END_GAME
 
@@ -439,6 +462,13 @@ class PokerEngine:
         Returns:
             New game state
         """
+        if self._use_pokerkit and self._pokerkit_engine._state is not None:
+            # pokerkit handles street progression automatically
+            # We just need to sync our game state
+            new_state, _ = self._pokerkit_engine.advance_to_next_street()
+            game.state = new_state
+            return new_state
+        
         return self._move_to_next_street(game)
 
     def _move_to_next_street(self, game: Game) -> GameState:
@@ -488,6 +518,9 @@ class PokerEngine:
         Returns:
             Card count (0=pre-flop, 3=flop, 1=turn/river)
         """
+        if self._use_pokerkit:
+            return self._pokerkit_engine.get_cards_to_deal(game_state)
+        
         card_counts = {
             GameState.ROUND_PRE_FLOP: 0,
             GameState.ROUND_FLOP: 3,
@@ -496,6 +529,28 @@ class PokerEngine:
             GameState.FINISHED: 0,
         }
         return card_counts.get(game_state, 0)
+    
+    def initialize_pokerkit_hand(
+        self,
+        game: Game,
+        players: Sequence[Player],
+        small_blind: int,
+        big_blind: Optional[int] = None,
+    ) -> None:
+        """Initialize pokerkit State for a new hand"""
+        if self._use_pokerkit:
+            self._pokerkit_engine.initialize_hand(
+                game, players, small_blind, big_blind
+            )
+    
+    def sync_game_from_pokerkit(self, game: Game, players: Sequence[Player]) -> None:
+        """Sync Game entity from pokerkit State"""
+        if self._use_pokerkit and self._pokerkit_engine._state is not None:
+            self._pokerkit_engine.sync_game_from_state(game, players)
+    
+    def get_pokerkit_engine(self) -> Optional['PokerKitEngine']:
+        """Get the pokerkit engine instance (for advanced usage)"""
+        return self._pokerkit_engine if self._use_pokerkit else None
 
 
 class GameEngine:
@@ -872,6 +927,20 @@ class GameEngine:
                 if cards_count > 0:
                     dealt_count = self._deal_community_cards(cards_count)
                     self._persist_state()
+                    
+                    # Deal to pokerkit if using it
+                    pokerkit_engine = self._coordinator.engine.get_pokerkit_engine()
+                    if pokerkit_engine and pokerkit_engine._state is not None:
+                        # Burn card before dealing
+                        pokerkit_engine.burn_card()
+                        # Deal the community cards
+                        pokerkit_engine.deal_board_cards(
+                            self._game.cards_table[-cards_count:]
+                        )
+                        # Sync state after dealing
+                        self._coordinator.engine.sync_game_from_pokerkit(
+                            self._game, self._players
+                        )
 
                     if dealt_count > 0 and self._view is not None:
                         try:
@@ -938,11 +1007,30 @@ class GameEngine:
         await self._notify_private_hands()
 
         self._align_players_with_dealer()
+        
+        # Initialize pokerkit state if available
+        self._coordinator.engine.initialize_pokerkit_hand(
+            self._game,
+            self._players,
+            self._small_blind,
+            self._big_blind,
+        )
+        
+        # Deal cards to pokerkit if using it
+        pokerkit_engine = self._coordinator.engine.get_pokerkit_engine()
+        if pokerkit_engine and pokerkit_engine._state is not None:
+            # Deal hole cards to pokerkit
+            for player in self._players:
+                pokerkit_engine.deal_hole_cards(player, player.cards)
+        
         self._coordinator.apply_pre_flop_blinds(
             game=self._game,
             small_blind=self._small_blind,
             big_blind=self._big_blind,
         )
+        
+        # Sync game state from pokerkit after blinds
+        self._coordinator.engine.sync_game_from_pokerkit(self._game, self._players)
 
         if len(self._players) == 2:
             self._logger.debug(

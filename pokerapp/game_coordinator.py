@@ -181,6 +181,11 @@ class GameCoordinator:
         Returns:
             (TurnResult, next_player_or_None)
         """
+        # Sync game state from pokerkit before processing
+        pokerkit_engine = self.engine.get_pokerkit_engine()
+        if pokerkit_engine and pokerkit_engine._state is not None:
+            self.engine.sync_game_from_pokerkit(game, game.players)
+        
         result = self.engine.process_turn(game)
 
         if result == TurnResult.CONTINUE_ROUND:
@@ -226,7 +231,16 @@ class GameCoordinator:
         big_blind: Optional[int] = None,
     ) -> None:
         """Apply small and big blinds at the start of the hand."""
+        
+        # Use pokerkit if available - blinds are handled automatically
+        pokerkit_engine = self.engine.get_pokerkit_engine()
+        if pokerkit_engine and pokerkit_engine._state is not None:
+            # pokerkit already applied blinds during initialization
+            # Just sync the game state
+            self.engine.sync_game_from_pokerkit(game, game.players)
+            return
 
+        # Legacy implementation
         if len(game.players) < 2:
             return
 
@@ -244,7 +258,27 @@ class GameCoordinator:
         amount: int,
     ) -> Money:
         """Handle raise/bet action for a player."""
+        
+        # Use pokerkit if available
+        pokerkit_engine = self.engine.get_pokerkit_engine()
+        if pokerkit_engine and pokerkit_engine._state is not None:
+            # Calculate total bet amount (not increment)
+            call_amount = max(game.max_round_rate - player.round_rate, 0)
+            total_bet = game.max_round_rate + max(amount - game.max_round_rate, 0)
+            
+            # Use pokerkit for the action
+            amount_committed = pokerkit_engine.player_action_bet_or_raise(total_bet)
+            
+            # Update player wallet and round rate
+            player.wallet.authorize(game_id=game.id, amount=amount_committed)
+            player.round_rate += amount_committed
+            
+            # Sync game state from pokerkit
+            self.engine.sync_game_from_pokerkit(game, game.players)
+            
+            return amount_committed
 
+        # Legacy implementation
         call_amount = max(game.max_round_rate - player.round_rate, 0)
         raise_increment = max(amount - game.max_round_rate, 0)
         total_needed = call_amount + raise_increment
@@ -275,7 +309,23 @@ class GameCoordinator:
 
     def player_call_or_check(self, game: Game, player: Player) -> Money:
         """Handle call/check action for a player."""
+        
+        # Use pokerkit if available
+        pokerkit_engine = self.engine.get_pokerkit_engine()
+        if pokerkit_engine and pokerkit_engine._state is not None:
+            # Use pokerkit for the action
+            amount_committed = pokerkit_engine.player_action_check_or_call()
+            
+            # Update player wallet and round rate
+            player.wallet.authorize(game_id=game.id, amount=amount_committed)
+            player.round_rate += amount_committed
+            
+            # Sync game state from pokerkit
+            self.engine.sync_game_from_pokerkit(game, game.players)
+            
+            return amount_committed
 
+        # Legacy implementation
         amount = game.max_round_rate - player.round_rate
 
         player.wallet.authorize(
@@ -285,6 +335,23 @@ class GameCoordinator:
         player.round_rate += amount
 
         return amount
+
+    def player_fold(self, game: Game, player: Player) -> None:
+        """Handle fold action for a player."""
+        
+        # Use pokerkit if available
+        pokerkit_engine = self.engine.get_pokerkit_engine()
+        if pokerkit_engine and pokerkit_engine._state is not None:
+            # Use pokerkit for the action
+            pokerkit_engine.player_action_fold()
+            player.state = PlayerState.FOLD
+            
+            # Sync game state from pokerkit
+            self.engine.sync_game_from_pokerkit(game, game.players)
+            return
+        
+        # Legacy implementation
+        player.state = PlayerState.FOLD
 
     def player_all_in(self, game: Game, player: Player) -> Money:
         """Handle all-in action for a player."""

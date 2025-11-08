@@ -1626,7 +1626,8 @@ class PokerBotModel:
         game = self._game_from_context(context)
         player = self._current_turn_player(game)
 
-        player.state = PlayerState.FOLD
+        # Use coordinator's fold method (which uses pokerkit if available)
+        self._coordinator.player_fold(game, player)
 
         player_name = self._get_player_name(player)
         game.add_action(f"{player_name} folded")
