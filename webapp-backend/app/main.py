@@ -104,7 +104,18 @@ try:
     app.include_router(group_game.router, prefix="/api")
     log.info("✅ Group game routes registered")
 except Exception as e:
-    log.warning("⚠️ Could not load group game routes: %s", e)
+    log.warning("⚠️ Could not load group game routes: %s", e, exc_info=True)
+
+# Include other route modules
+try:
+    from app.routes import auth, game, tables, miniapp
+    app.include_router(auth.router, prefix="/api")
+    app.include_router(game.router, prefix="/api")
+    app.include_router(tables.router, prefix="/api")
+    app.include_router(miniapp.router, prefix="/api")
+    log.info("✅ Additional routes registered")
+except Exception as e:
+    log.warning("⚠️ Could not load some routes: %s", e, exc_info=True)
 
 
 # ---- Startup log of routes (for your diagnostics) ----
@@ -115,3 +126,8 @@ async def show_routes():
         methods = getattr(r, "methods", {"GET"})
         path = getattr(r, "path", "")
         log.info("  %s %s", methods, path)
+    log.info("✅ FastAPI application started successfully")
+
+@app.on_event("shutdown")
+async def shutdown():
+    log.info("🛑 FastAPI application shutting down")
